@@ -50,9 +50,13 @@ class AlphaTestAgent:
         self.status("🚀 Starting browser...")
         pw = await async_playwright().start()
         self.browser = await pw.chromium.launch(
-            headless=False, 
-            slow_mo=50,
-            args=['--start-maximized']
+            headless=True,
+            args=[
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu'
+            ]
         )
         self.page = await self.browser.new_page(viewport={'width': 1920, 'height': 1080})
         
