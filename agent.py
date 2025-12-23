@@ -49,27 +49,41 @@ class AlphaTestAgent:
         """Start browser and prepare session."""
         self.status("🚀 Starting browser...")
         pw = await async_playwright().start()
+
+        # Launch with args optimized for headless screenshot capture
         self.browser = await pw.chromium.launch(
             headless=True,
             args=[
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-software-rasterizer',
-                '--disable-extensions'
+                '--disable-blink-features=AutomationControlled',
+                '--force-device-scale-factor=1',
+                '--window-size=1920,1080'
             ]
         )
-        self.page = await self.browser.new_page(
+
+        # Create context with settings optimized for rendering
+        context = await self.browser.new_context(
             viewport={'width': 1920, 'height': 1080},
-            device_scale_factor=1
+            device_scale_factor=1,
+            has_touch=False,
+            is_mobile=False,
+            locale='en-US',
+            timezone_id='America/New_York',
+            color_scheme='light',
+            reduced_motion='no-preference',
+            forced_colors='none'
         )
-        
+
+        self.page = await context.new_page()
+
         # Setup session directory
         if session_dir:
             self.session_dir = Path(session_dir)
         else:
             self.session_dir = Path("./reports") / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        
+
         (self.session_dir / "screenshots").mkdir(parents=True, exist_ok=True)
         self.status("✓ Browser ready!")
     
@@ -113,12 +127,20 @@ class AlphaTestAgent:
         # Wait for page to be stable
         await self.wait_for_stable()
 
-        # Additional wait to ensure rendering is complete
-        await asyncio.sleep(0.5)
-
-        # Wait for body to be visible (ensure page has content)
+        # Wait for body and ensure it has content
         try:
             await self.page.wait_for_selector('body', state='visible', timeout=5000)
+            # Wait for any element to ensure content is loaded
+            await self.page.wait_for_selector('body *', state='attached', timeout=5000)
+        except:
+            pass
+
+        # Additional wait to ensure complete rendering (critical for headless)
+        await asyncio.sleep(1.0)
+
+        # Force a repaint by evaluating JS
+        try:
+            await self.page.evaluate('() => { document.body.offsetHeight; }')
         except:
             pass
 
@@ -128,11 +150,13 @@ class AlphaTestAgent:
         filepath = self.session_dir / "screenshots" / filename
 
         try:
-            # Take full page screenshot for better visibility
+            # Take screenshot with explicit options for headless mode
             await self.page.screenshot(
                 path=str(filepath),
-                full_page=True,
-                animations='disabled'
+                full_page=False,  # Changed to viewport only for faster, more reliable capture
+                type='png',
+                animations='disabled',
+                caret='hide'
             )
 
             # Verify file was created and has content
