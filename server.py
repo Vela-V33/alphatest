@@ -1,0 +1,571 @@
+#!/usr/bin/env python3
+"""
+AlphaTest - AI-Powered UAT Testing
+Main server application
+"""
+
+import os
+import json
+import asyncio
+import threading
+from datetime import datetime
+from pathlib import Path
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect
+from flask_socketio import SocketIO, emit
+import yaml
+
+# Import our modules
+from crawler import AppCrawler
+from agent import AlphaTestAgent
+from report_generator import generate_report
+
+app = Flask(__name__)
+app.secret_key = 'alphatest-secret-key-2024'
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Data directories
+DATA_DIR = Path(__file__).parent / "data"
+REPORTS_DIR = Path(__file__).parent / "reports"
+DATA_DIR.mkdir(exist_ok=True)
+REPORTS_DIR.mkdir(exist_ok=True)
+
+# Store active test sessions
+active_sessions = {}
+
+def load_projects():
+    """Load all saved projects."""
+    projects_file = DATA_DIR / "projects.json"
+    if projects_file.exists():
+        return json.loads(projects_file.read_text())
+    return {}
+
+def save_projects(projects):
+    """Save projects to file."""
+    projects_file = DATA_DIR / "projects.json"
+    projects_file.write_text(json.dumps(projects, indent=2))
+
+def load_config():
+    """Load main config with API key."""
+    config_file = Path(__file__).parent / "config.yaml"
+    if config_file.exists():
+        return yaml.safe_load(config_file.read_text())
+    return {}
+
+def save_config(config):
+    """Save config to file."""
+    config_file = Path(__file__).parent / "config.yaml"
+    with open(config_file, 'w') as f:
+        yaml.dump(config, f, default_flow_style=False)
+
+def is_api_key_configured():
+    """Check if a valid API key is configured."""
+    config = load_config()
+    api_key = config.get('anthropic_api_key', '')
+    return api_key and 'YOUR-API-KEY' not in api_key and len(api_key) > 20
+
+# ============================================
+# ROUTES
+# ============================================
+
+@app.route('/')
+def dashboard():
+    """Main dashboard - redirects to setup if needed."""
+    if not is_api_key_configured():
+        return redirect('/setup')
+    projects = load_projects()
+    return render_template('dashboard.html', projects=projects)
+
+@app.route('/setup', methods=['GET', 'POST'])
+def setup():
+    """First-time setup wizard."""
+    if request.method == 'POST':
+        data = request.json
+        api_key = data.get('api_key', '').strip()
+        
+        if not api_key or not api_key.startswith('sk-ant-'):
+            return jsonify({'success': False, 'error': 'Invalid API key. It should start with sk-ant-'})
+        
+        # Load existing config and update
+        config = load_config()
+        config['anthropic_api_key'] = api_key
+        
+        # Ensure other defaults exist
+        if 'model' not in config:
+            config['model'] = 'claude-sonnet-4-20250514'
+        
+        save_config(config)
+        
+        return jsonify({'success': True})
+    
+    # Check if already configured
+    if is_api_key_configured():
+        return redirect('/')
+    
+    return render_template('setup.html')
+
+@app.route('/project/new', methods=['GET', 'POST'])
+def new_project():
+    """Create a new project."""
+    if request.method == 'POST':
+        data = request.json
+        projects = load_projects()
+        
+        project_id = data['name'].lower().replace(' ', '-')
+        projects[project_id] = {
+            'id': project_id,
+            'name': data['name'],
+            'url': data['url'],
+            'login_url': data.get('login_url', ''),
+            'email': data.get('email', ''),
+            'password': data.get('password', ''),
+            'created_at': datetime.now().isoformat(),
+            'crawl_data': None,
+            'test_specs': [],
+            'test_history': []
+        }
+        
+        save_projects(projects)
+        return jsonify({'success': True, 'project_id': project_id})
+    
+    return render_template('new_project.html')
+
+@app.route('/project/<project_id>')
+def view_project(project_id):
+    """View a specific project."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return "Project not found", 404
+    return render_template('project.html', project=project)
+
+@app.route('/project/<project_id>/delete', methods=['POST'])
+def delete_project(project_id):
+    """Delete a project."""
+    projects = load_projects()
+    if project_id in projects:
+        del projects[project_id]
+        save_projects(projects)
+    return jsonify({'success': True})
+
+@app.route('/project/<project_id>/update', methods=['POST'])
+def update_project(project_id):
+    """Update project settings."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+    
+    data = request.json
+    projects[project_id].update({
+        'name': data.get('name', projects[project_id]['name']),
+        'url': data.get('url', projects[project_id]['url']),
+        'login_url': data.get('login_url', projects[project_id]['login_url']),
+        'email': data.get('email', projects[project_id]['email']),
+        'password': data.get('password', projects[project_id]['password']),
+    })
+    save_projects(projects)
+    return jsonify({'success': True})
+
+@app.route('/project/<project_id>/crawl')
+def crawl_project(project_id):
+    """Show crawl interface for a project."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return "Project not found", 404
+    return render_template('crawl.html', project=project)
+
+@app.route('/project/<project_id>/test')
+def test_project(project_id):
+    """Show test interface for a project."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return "Project not found", 404
+    return render_template('test.html', project=project)
+
+@app.route('/project/<project_id>/reports')
+def project_reports(project_id):
+    """Show test reports for a project."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return "Project not found", 404
+    
+    # Get reports for this project
+    project_reports_dir = REPORTS_DIR / project_id
+    reports = []
+    if project_reports_dir.exists():
+        for report_dir in sorted(project_reports_dir.iterdir(), reverse=True):
+            if report_dir.is_dir():
+                report_file = report_dir / "report.json"
+                if report_file.exists():
+                    report_data = json.loads(report_file.read_text())
+                    reports.append({
+                        'id': report_dir.name,
+                        'date': report_data.get('date', report_dir.name),
+                        'summary': report_data.get('summary', {}),
+                        'path': str(report_dir)
+                    })
+    
+    return render_template('reports.html', project=project, reports=reports)
+
+@app.route('/reports/<project_id>/<report_id>')
+def view_report(project_id, report_id):
+    """View a specific report."""
+    report_dir = REPORTS_DIR / project_id / report_id
+    report_file = report_dir / "report.html"
+    if report_file.exists():
+        return report_file.read_text()
+    return "Report not found", 404
+
+@app.route('/reports/<project_id>/<report_id>/screenshots/<filename>')
+def report_screenshot(project_id, report_id, filename):
+    """Serve report screenshots."""
+    return send_from_directory(REPORTS_DIR / project_id / report_id / "screenshots", filename)
+
+@app.route('/project/<project_id>/specs', methods=['GET', 'POST'])
+def manage_specs(project_id):
+    """Manage test specifications."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+    if request.method == 'POST':
+        data = request.json
+        projects[project_id]['test_specs'] = data.get('specs', [])
+        save_projects(projects)
+        return jsonify({'success': True})
+
+    return jsonify({'specs': projects[project_id].get('test_specs', [])})
+
+
+@app.route('/issues')
+def issues_dashboard():
+    """View all issues across projects."""
+    projects = load_projects()
+
+    # Collect all issues from all reports
+    issues_by_project = {}
+    total_issues = 0
+    critical_count = 0
+    high_count = 0
+    medium_count = 0
+
+    for project_id, project in projects.items():
+        project_reports_dir = REPORTS_DIR / project_id
+        project_issues = []
+
+        if project_reports_dir.exists():
+            for report_dir in sorted(project_reports_dir.iterdir(), reverse=True):
+                if report_dir.is_dir():
+                    report_file = report_dir / "report.json"
+                    if report_file.exists():
+                        report_data = json.loads(report_file.read_text())
+                        for issue in report_data.get('issues', []):
+                            issue['report_id'] = report_dir.name
+                            issue['report_date'] = report_data.get('date', '')[:10]
+                            project_issues.append(issue)
+
+                            severity = issue.get('severity', 'medium')
+                            if severity == 'critical':
+                                critical_count += 1
+                            elif severity == 'high':
+                                high_count += 1
+                            else:
+                                medium_count += 1
+
+        if project_issues:
+            issues_by_project[project_id] = {
+                'name': project['name'],
+                'issues': project_issues
+            }
+            total_issues += len(project_issues)
+
+    return render_template('issues.html',
+        projects=projects,
+        issues_by_project=issues_by_project,
+        total_issues=total_issues,
+        critical_count=critical_count,
+        high_count=high_count,
+        medium_count=medium_count
+    )
+
+
+@app.route('/project/<project_id>/team', methods=['GET', 'POST', 'DELETE'])
+def manage_team(project_id):
+    """Manage team members for a project."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+    project = projects[project_id]
+
+    # Initialize team array if not exists
+    if 'team' not in project:
+        project['team'] = []
+
+    if request.method == 'POST':
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        role = data.get('role', 'viewer')
+
+        if not email:
+            return jsonify({'success': False, 'error': 'Email is required'}), 400
+
+        # Check if already in team
+        for member in project['team']:
+            if member['email'] == email:
+                return jsonify({'success': False, 'error': 'User already in team'}), 400
+
+        # Add team member
+        project['team'].append({
+            'email': email,
+            'role': role,
+            'invited_at': datetime.now().isoformat()
+        })
+        save_projects(projects)
+
+        return jsonify({'success': True, 'team': project['team']})
+
+    elif request.method == 'DELETE':
+        data = request.json
+        email = data.get('email', '').strip().lower()
+
+        project['team'] = [m for m in project['team'] if m['email'] != email]
+        save_projects(projects)
+
+        return jsonify({'success': True, 'team': project['team']})
+
+    return jsonify({'team': project['team']})
+
+# ============================================
+# SOCKET.IO EVENTS
+# ============================================
+
+@socketio.on('connect')
+def handle_connect():
+    emit('status', {'message': 'Connected to AlphaTest'})
+
+@socketio.on('start_crawl')
+def handle_crawl(data):
+    """Start crawling an app."""
+    project_id = data.get('project_id')
+    projects = load_projects()
+    project = projects.get(project_id)
+    
+    if not project:
+        emit('crawl_error', {'message': 'Project not found'})
+        return
+    
+    config = load_config()
+    
+    def run_crawl():
+        async def crawl_async():
+            crawler = AppCrawler(
+                config.get('anthropic_api_key'),
+                lambda msg: socketio.emit('crawl_progress', {'message': msg})
+            )
+            
+            try:
+                result = await crawler.crawl(
+                    url=project['url'],
+                    login_url=project.get('login_url'),
+                    email=project.get('email'),
+                    password=project.get('password')
+                )
+                
+                # Save crawl data
+                projects = load_projects()
+                projects[project_id]['crawl_data'] = result
+                projects[project_id]['test_specs'] = result.get('suggested_tests', [])
+                save_projects(projects)
+                
+                socketio.emit('crawl_complete', {'result': result})
+                
+            except Exception as e:
+                socketio.emit('crawl_error', {'message': str(e)})
+            finally:
+                await crawler.close()
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(crawl_async())
+        loop.close()
+    
+    thread = threading.Thread(target=run_crawl)
+    thread.start()
+
+@socketio.on('run_test')
+def handle_test(data):
+    """Run a test command."""
+    project_id = data.get('project_id')
+    command = data.get('command')
+    
+    projects = load_projects()
+    project = projects.get(project_id)
+    
+    if not project:
+        emit('test_error', {'message': 'Project not found'})
+        return
+    
+    config = load_config()
+    session_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+    def run_test():
+        async def test_async():
+            agent = AlphaTestAgent(
+                api_key=config.get('anthropic_api_key'),
+                status_callback=lambda msg: socketio.emit('test_progress', {'message': msg}),
+                screenshot_callback=lambda path: socketio.emit('test_screenshot', {'path': path})
+            )
+            
+            try:
+                await agent.initialize()
+                
+                # Navigate and login
+                await agent.page.goto(project['url'], wait_until='networkidle')
+                
+                if project.get('email') and project.get('password'):
+                    login_url = project.get('login_url') or project['url']
+                    await agent.login(
+                        login_url=login_url,
+                        email=project['email'],
+                        password=project['password']
+                    )
+                
+                # Run the test
+                result = await agent.run_command(command)
+                
+                # Generate report
+                report_dir = REPORTS_DIR / project_id / session_id
+                report_data = agent.get_report_data()
+                report_path = generate_report(report_data, report_dir, project)
+                
+                socketio.emit('test_complete', {
+                    'result': result,
+                    'report_url': f'/reports/{project_id}/{session_id}'
+                })
+                
+            except Exception as e:
+                socketio.emit('test_error', {'message': str(e)})
+            finally:
+                await agent.close()
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(test_async())
+        loop.close()
+    
+    thread = threading.Thread(target=run_test)
+    thread.start()
+
+@socketio.on('run_spec')
+def handle_run_spec(data):
+    """Run a full test specification."""
+    project_id = data.get('project_id')
+    spec_ids = data.get('spec_ids', [])  # List of spec IDs to run
+    
+    projects = load_projects()
+    project = projects.get(project_id)
+    
+    if not project:
+        emit('test_error', {'message': 'Project not found'})
+        return
+    
+    config = load_config()
+    session_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+    # Get specs to run
+    all_specs = project.get('test_specs', [])
+    if spec_ids:
+        specs_to_run = [s for s in all_specs if s.get('id') in spec_ids]
+    else:
+        specs_to_run = [s for s in all_specs if s.get('enabled', True)]
+    
+    def run_specs():
+        async def specs_async():
+            agent = AlphaTestAgent(
+                api_key=config.get('anthropic_api_key'),
+                status_callback=lambda msg: socketio.emit('test_progress', {'message': msg}),
+                screenshot_callback=lambda path: socketio.emit('test_screenshot', {'path': path})
+            )
+            
+            try:
+                await agent.initialize()
+                
+                # Navigate and login
+                await agent.page.goto(project['url'], wait_until='networkidle')
+                
+                if project.get('email') and project.get('password'):
+                    login_url = project.get('login_url') or project['url']
+                    await agent.login(
+                        login_url=login_url,
+                        email=project['email'],
+                        password=project['password']
+                    )
+                
+                # Run each spec
+                results = []
+                for spec in specs_to_run:
+                    socketio.emit('spec_start', {'spec': spec})
+                    result = await agent.run_command(spec['description'])
+                    result['spec_name'] = spec['name']
+                    results.append(result)
+                    socketio.emit('spec_complete', {'spec': spec, 'result': result})
+                
+                # Generate report
+                report_dir = REPORTS_DIR / project_id / session_id
+                report_data = agent.get_report_data()
+                report_data['specs_results'] = results
+                report_path = generate_report(report_data, report_dir, project)
+                
+                socketio.emit('all_specs_complete', {
+                    'results': results,
+                    'report_url': f'/reports/{project_id}/{session_id}'
+                })
+                
+            except Exception as e:
+                socketio.emit('test_error', {'message': str(e)})
+            finally:
+                await agent.close()
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(specs_async())
+        loop.close()
+    
+    thread = threading.Thread(target=run_specs)
+    thread.start()
+
+# ============================================
+# MAIN
+# ============================================
+
+def main():
+    import webbrowser
+    
+    print("")
+    print("=" * 50)
+    print("  🧪 AlphaTest - AI-Powered UAT Testing")
+    print("=" * 50)
+    print("")
+    print("  Opening in your browser...")
+    print("  URL: http://127.0.0.1:8080")
+    print("")
+    print("  Press Ctrl+C to stop")
+    print("=" * 50)
+    print("")
+    
+    # Open browser after a short delay
+    def open_browser():
+        import time
+        time.sleep(1.5)
+        webbrowser.open('http://127.0.0.1:8080')
+    
+    threading.Thread(target=open_browser, daemon=True).start()
+    
+    # Run server on port 8080
+    socketio.run(app, host='0.0.0.0', port=8080, debug=False, allow_unsafe_werkzeug=True)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,5 @@
+# AlphaTest Configuration
+# Copy this file to config.yaml and add your API key
+
+anthropic_api_key: "YOUR-API-KEY-HERE"
+model: "claude-sonnet-4-20250514"

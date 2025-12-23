@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - {{ project.name }} - AlphaTest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/theme.css">
+</head>
+<body>
+    <!-- Background Pattern -->
+    <div class="bg-pattern"></div>
+
+    <!-- Content Wrapper -->
+    <div class="relative z-10 min-h-screen">
+        <!-- Header -->
+        <header class="header-glass">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center space-x-4">
+                    <a href="/project/{{ project.id }}" class="btn-ghost text-sm">← {{ project.name }}</a>
+                    <div class="w-px h-6 bg-white/20"></div>
+                    <h1 class="text-xl font-bold text-white">Test Reports</h1>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-6 py-8">
+            {% if reports %}
+            <div class="space-y-4">
+                {% for report in reports %}
+                <a href="/reports/{{ project.id }}/{{ report.id }}" class="glass-card p-5 block group">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="icon-container group-hover:scale-110 transition-transform">
+                                <span class="text-xl">📊</span>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-white mb-1">{{ report.date }}</p>
+                                <div class="flex items-center space-x-3 text-sm">
+                                    <span class="flex items-center space-x-1 text-green-400">
+                                        <span class="status-dot status-dot-success"></span>
+                                        <span>{{ report.summary.passed }} passed</span>
+                                    </span>
+                                    {% if report.summary.failed > 0 %}
+                                    <span class="flex items-center space-x-1 text-red-400">
+                                        <span class="status-dot status-dot-error"></span>
+                                        <span>{{ report.summary.failed }} failed</span>
+                                    </span>
+                                    {% endif %}
+                                    {% if report.summary.issues > 0 %}
+                                    <span class="flex items-center space-x-1 text-yellow-400">
+                                        <span class="status-dot status-dot-warning"></span>
+                                        <span>{{ report.summary.issues }} issues</span>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <span class="text-slate-500 group-hover:text-blue-400 transition-colors text-xl">→</span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="glass-card p-10 text-center max-w-lg mx-auto">
+                <div class="icon-container-lg mx-auto mb-6">
+                    <span>📊</span>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">No Reports Yet</h3>
+                <p class="text-slate-400 mb-6">Run some tests to generate reports.</p>
+                <a href="/project/{{ project.id }}" class="btn-primary inline-flex items-center space-x-2">
+                    <span>Go to Project</span>
+                    <span>→</span>
+                </a>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>

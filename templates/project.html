@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} - AlphaTest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/theme.css">
+</head>
+<body>
+    <!-- Background Pattern -->
+    <div class="bg-pattern"></div>
+
+    <!-- Content Wrapper -->
+    <div class="relative z-10 min-h-screen">
+        <!-- Header -->
+        <header class="header-glass">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="/" class="btn-ghost text-sm">
+                            ← Projects
+                        </a>
+                        <div class="w-px h-6 bg-white/20"></div>
+                        <div>
+                            <h1 class="text-xl font-bold text-white">{{ project.name }}</h1>
+                            <p class="text-slate-400 text-sm truncate max-w-xs">{{ project.url }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <a href="/project/{{ project.id }}/reports" class="btn-secondary text-sm flex items-center space-x-2">
+                            <span>📊</span>
+                            <span>Reports</span>
+                        </a>
+                        <button onclick="showSettings()" class="btn-secondary text-sm flex items-center space-x-2">
+                            <span>⚙</span>
+                            <span>Settings</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-6 py-6">
+            <!-- Tabs -->
+            <div class="tab-container inline-flex mb-6">
+                <button onclick="showTab('analyze')" id="tab-analyze" class="tab-btn active">
+                    🔍 Analyze App
+                </button>
+                <button onclick="showTab('specs')" id="tab-specs" class="tab-btn">
+                    📋 Test Specs
+                </button>
+                <button onclick="showTab('test')" id="tab-test" class="tab-btn">
+                    🧪 Run Tests
+                </button>
+            </div>
+
+            <!-- Tab: Analyze -->
+            <div id="panel-analyze" class="tab-panel">
+                {% if project.crawl_data %}
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- App Info -->
+                    <div class="glass-card p-6">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="icon-container-sm">
+                                <span>📱</span>
+                            </div>
+                            <h3 class="font-semibold text-white">App Analysis</h3>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <span class="text-slate-500 text-sm">Type</span>
+                                <p class="text-white font-medium">{{ project.crawl_data.app_type }}</p>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 text-sm">Description</span>
+                                <p class="text-slate-300 mt-1">{{ project.crawl_data.app_description }}</p>
+                            </div>
+                        </div>
+                        <button onclick="startCrawl()" class="btn-ghost text-blue-400 mt-4 text-sm">
+                            🔄 Re-analyze App
+                        </button>
+                    </div>
+
+                    <!-- Features -->
+                    <div class="glass-card p-6">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="icon-container-sm">
+                                <span>✨</span>
+                            </div>
+                            <h3 class="font-semibold text-white">Discovered Features</h3>
+                        </div>
+                        <div class="space-y-3 max-h-64 overflow-y-auto">
+                            {% for feature in project.crawl_data.features %}
+                            <div class="flex items-start space-x-3 p-3 glass-subtle rounded-lg">
+                                <span class="text-blue-400 mt-1">•</span>
+                                <div>
+                                    <span class="font-medium text-white">{{ feature.name }}</span>
+                                    <p class="text-slate-400 text-sm">{{ feature.description }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Sitemap -->
+                    <div class="glass-card p-6 md:col-span-2">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="icon-container-sm">
+                                <span>🗺</span>
+                            </div>
+                            <h3 class="font-semibold text-white">Sitemap</h3>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {% for page in project.crawl_data.sitemap %}
+                            <div class="glass-subtle p-3 rounded-lg">
+                                <p class="font-medium text-sm text-white truncate">{{ page.path }}</p>
+                                <p class="text-xs text-slate-500 truncate">{{ page.title }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="glass-card p-10 text-center max-w-xl mx-auto">
+                    <div class="icon-container-lg mx-auto mb-6">
+                        <span>🔍</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Analyze Your App</h3>
+                    <p class="text-slate-400 mb-6">Let AI crawl your app to discover pages, features, and suggest tests.</p>
+                    <button onclick="startCrawl()" id="crawlBtn" class="btn-primary">
+                        🔍 Start Analysis
+                    </button>
+
+                    <div id="crawlProgress" class="hidden mt-6">
+                        <div class="flex items-center justify-center space-x-2 text-blue-400 font-medium mb-3">
+                            <div class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                            <span>Analyzing...</span>
+                        </div>
+                        <div id="crawlLog" class="chat-container text-left text-sm text-slate-400 max-h-48"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab: Test Specs -->
+            <div id="panel-specs" class="tab-panel hidden">
+                <!-- Templates Section -->
+                <div class="glass-card p-6 mb-6">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="icon-container-sm">
+                            <span>📝</span>
+                        </div>
+                        <h3 class="font-semibold text-white">Quick Templates</h3>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="useTemplate('login')" class="quick-action">
+                            🔐 Login Test
+                        </button>
+                        <button onclick="useTemplate('form')" class="quick-action">
+                            📝 Form Submission
+                        </button>
+                        <button onclick="useTemplate('navigation')" class="quick-action">
+                            🧭 Navigation Test
+                        </button>
+                        <button onclick="useTemplate('crud')" class="quick-action">
+                            📦 CRUD Operations
+                        </button>
+                        <button onclick="useTemplate('search')" class="quick-action">
+                            🔍 Search Functionality
+                        </button>
+                        <button onclick="useTemplate('responsive')" class="quick-action">
+                            📱 Responsive Check
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Specs List -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="icon-container-sm">
+                                <span>📋</span>
+                            </div>
+                            <h3 class="font-semibold text-white">Test Specifications</h3>
+                            <span class="badge badge-neutral text-xs" id="specCount">{{ project.test_specs|length }} tests</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="selectAllSpecs(true)" class="btn-ghost text-xs text-slate-400">
+                                Select All
+                            </button>
+                            <button onclick="selectAllSpecs(false)" class="btn-ghost text-xs text-slate-400">
+                                Deselect All
+                            </button>
+                            <div class="w-px h-4 bg-white/20"></div>
+                            <button onclick="openSpecModal()" class="btn-secondary text-sm">
+                                + Add Test
+                            </button>
+                            <button onclick="confirmAndRunSpecs()" class="btn-primary text-sm">
+                                ▶ Run Selected
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="specsList" class="space-y-3">
+                        {% for spec in project.test_specs %}
+                        <div class="glass-subtle p-4 rounded-lg spec-item" data-spec-id="{{ spec.id }}">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-start space-x-4">
+                                    <input type="checkbox" checked class="spec-checkbox checkbox-glass mt-1" data-id="{{ spec.id }}">
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2 mb-1">
+                                            <span class="font-medium text-white">{{ spec.name }}</span>
+                                            <span class="badge badge-neutral text-xs">{{ spec.category }}</span>
+                                            <span class="badge {% if spec.priority == 'high' %}badge-error{% elif spec.priority == 'medium' %}badge-warning{% else %}badge-neutral{% endif %} text-xs">
+                                                {{ spec.priority }}
+                                            </span>
+                                        </div>
+                                        <p class="text-slate-400 text-sm mb-2">{{ spec.description }}</p>
+                                        {% if spec.acceptance_criteria %}
+                                        <div class="flex flex-wrap gap-1">
+                                            {% for criteria in spec.acceptance_criteria %}
+                                            <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                                {{ criteria.type }}: {{ criteria.value[:20] }}{% if criteria.value|length > 20 %}...{% endif %}
+                                            </span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="editSpec('{{ spec.id }}')" class="text-slate-500 hover:text-white transition p-1" title="Edit">
+                                        ✏️
+                                    </button>
+                                    <button onclick="duplicateSpec('{{ spec.id }}')" class="text-slate-500 hover:text-white transition p-1" title="Duplicate">
+                                        📋
+                                    </button>
+                                    <button onclick="deleteSpec('{{ spec.id }}')" class="text-slate-500 hover:text-red-400 transition p-1" title="Delete">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if not project.test_specs %}
+                    <div id="emptySpecs" class="text-center py-10 text-slate-400">
+                        <p>No test specs yet. Analyze your app first or add tests manually.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tab: Run Tests -->
+            <div id="panel-test" class="tab-panel hidden">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Chat Interface -->
+                    <div class="glass-card p-6">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="icon-container-sm">
+                                <span>💬</span>
+                            </div>
+                            <h3 class="font-semibold text-white">Chat with AlphaTest</h3>
+                        </div>
+
+                        <div id="chatLog" class="chat-container h-64 mb-4 space-y-2">
+                            <div class="text-slate-500 text-sm">Tell me what to test in plain English...</div>
+                        </div>
+
+                        <form id="chatForm" class="flex space-x-2" onsubmit="event.preventDefault(); sendChat();">
+                            <input type="text" id="chatInput" placeholder="Test the user profile update..."
+                                class="input-glass flex-1" autocomplete="off" autofocus
+                                style="position: relative; z-index: 10;">
+                            <button type="submit" id="sendBtn" class="btn-primary px-6">
+                                ▶ Run
+                            </button>
+                        </form>
+
+                        <!-- Quick Commands -->
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button onclick="quickTest('Test the login functionality')" class="quick-action">
+                                Test login
+                            </button>
+                            <button onclick="quickTest('Navigate through all main menu items')" class="quick-action">
+                                Test navigation
+                            </button>
+                            <button onclick="quickTest('Find and test all forms on this page')" class="quick-action">
+                                Test forms
+                            </button>
+                            <button onclick="quickTest('Look for broken links and UI issues')" class="quick-action">
+                                Check UI issues
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Preview -->
+                    <div class="glass-card p-6">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="icon-container-sm">
+                                <span>📸</span>
+                            </div>
+                            <h3 class="font-semibold text-white">Live Preview</h3>
+                        </div>
+                        <div id="livePreview" class="bg-black/30 rounded-lg h-72 flex items-center justify-center border border-white/10">
+                            <span class="text-slate-500 text-sm">Screenshots will appear here during testing</span>
+                        </div>
+                        <div id="testStatus" class="mt-4 text-sm text-slate-400"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-white mb-6">Project Settings</h3>
+            <form id="settingsForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Project Name</label>
+                    <input type="text" id="settings-name" value="{{ project.name }}" class="input-glass">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">App URL</label>
+                    <input type="url" id="settings-url" value="{{ project.url }}" class="input-glass">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Login URL</label>
+                    <input type="url" id="settings-login-url" value="{{ project.login_url }}" class="input-glass">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Email</label>
+                    <input type="email" id="settings-email" value="{{ project.email }}" class="input-glass">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                    <input type="password" id="settings-password" value="{{ project.password }}" class="input-glass">
+                </div>
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="hideSettings()" class="flex-1 btn-secondary">Cancel</button>
+                    <button type="submit" class="flex-1 btn-primary">Save</button>
+                </div>
+            </form>
+            <!-- Team Section -->
+            <div class="mt-6 pt-4 border-t border-white/10">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-medium text-slate-300">Team Members</h4>
+                    <button type="button" onclick="showInviteForm()" class="text-blue-400 text-sm hover:text-blue-300">+ Invite</button>
+                </div>
+
+                <div id="inviteForm" class="hidden mb-3">
+                    <div class="flex space-x-2">
+                        <input type="email" id="invite-email" placeholder="teammate@example.com" class="input-glass text-sm flex-1">
+                        <select id="invite-role" class="input-glass text-sm" style="width: 100px">
+                            <option value="editor">Editor</option>
+                            <option value="viewer">Viewer</option>
+                        </select>
+                        <button type="button" onclick="inviteTeamMember()" class="btn-primary text-sm px-3">Add</button>
+                    </div>
+                </div>
+
+                <div id="teamList" class="space-y-2">
+                    {% for member in project.team %}
+                    <div class="flex items-center justify-between p-2 glass-subtle rounded-lg text-sm">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-medium">
+                                {{ member.email[0]|upper }}
+                            </span>
+                            <span class="text-slate-300">{{ member.email }}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="badge badge-neutral text-xs">{{ member.role }}</span>
+                            <button onclick="removeTeamMember('{{ member.email }}')" class="text-slate-500 hover:text-red-400 text-xs">✕</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if not project.team %}
+                <p id="noTeamMsg" class="text-slate-500 text-sm">No team members yet</p>
+                {% endif %}
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-white/10">
+                <button onclick="deleteProject()" class="text-red-400 hover:text-red-300 text-sm transition">
+                    Delete Project
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Spec Modal -->
+    <div id="specModal" class="modal-overlay hidden">
+        <div class="modal-content max-w-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-white" id="specModalTitle">Add Test Specification</h3>
+                <button onclick="closeSpecModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+
+            <form id="specForm" class="space-y-5">
+                <input type="hidden" id="spec-id" value="">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Test Name *</label>
+                        <input type="text" id="spec-name" placeholder="e.g., User Login Test" required class="input-glass">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Category</label>
+                        <select id="spec-category" class="input-glass">
+                            <option value="authentication">Authentication</option>
+                            <option value="navigation">Navigation</option>
+                            <option value="forms">Forms</option>
+                            <option value="crud">CRUD Operations</option>
+                            <option value="search">Search</option>
+                            <option value="ui">UI/UX</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Priority</label>
+                        <select id="spec-priority" class="input-glass">
+                            <option value="high">High</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Test Description *</label>
+                    <textarea id="spec-description" rows="3" placeholder="Describe what the AI should test in plain English..." required class="input-glass"></textarea>
+                    <p class="text-xs text-slate-500 mt-1">Be specific about what actions to perform and what to verify</p>
+                </div>
+
+                <!-- Acceptance Criteria Section -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block text-sm font-medium text-slate-300">Acceptance Criteria</label>
+                        <button type="button" onclick="addCriteria()" class="text-blue-400 text-sm hover:text-blue-300">+ Add Condition</button>
+                    </div>
+
+                    <div id="criteriaList" class="space-y-2">
+                        <!-- Criteria items will be added here -->
+                    </div>
+
+                    <div class="glass-subtle p-3 rounded-lg mt-3">
+                        <p class="text-xs text-slate-400 mb-2">Common conditions:</p>
+                        <div class="flex flex-wrap gap-1">
+                            <button type="button" onclick="addQuickCriteria('url_contains', '/dashboard')" class="text-xs px-2 py-1 rounded bg-white/5 text-slate-300 hover:bg-white/10">URL contains</button>
+                            <button type="button" onclick="addQuickCriteria('element_visible', '.success-message')" class="text-xs px-2 py-1 rounded bg-white/5 text-slate-300 hover:bg-white/10">Element visible</button>
+                            <button type="button" onclick="addQuickCriteria('text_visible', 'Success')" class="text-xs px-2 py-1 rounded bg-white/5 text-slate-300 hover:bg-white/10">Text appears</button>
+                            <button type="button" onclick="addQuickCriteria('element_count', '1')" class="text-xs px-2 py-1 rounded bg-white/5 text-slate-300 hover:bg-white/10">Element count</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeSpecModal()" class="flex-1 btn-secondary">Cancel</button>
+                    <button type="submit" class="flex-1 btn-primary">Save Test Spec</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Run Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay hidden">
+        <div class="modal-content max-w-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-white">Confirm Test Run</h3>
+                <button onclick="closeConfirmModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+
+            <div class="mb-6">
+                <p class="text-slate-300 mb-4">You are about to run <span id="confirmSpecCount" class="font-bold text-white">0</span> test(s). Please review the acceptance criteria:</p>
+
+                <div id="confirmSpecsList" class="space-y-4 max-h-64 overflow-y-auto">
+                    <!-- Specs and criteria will be listed here -->
+                </div>
+            </div>
+
+            <div class="glass-subtle p-4 rounded-lg mb-6">
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" id="confirmCriteria" class="checkbox-glass">
+                    <span class="text-slate-300 text-sm">I confirm these acceptance criteria are correct and the tests should proceed</span>
+                </label>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="closeConfirmModal()" class="flex-1 btn-secondary">Cancel</button>
+                <button onclick="proceedWithRun()" id="proceedBtn" class="flex-1 btn-primary" disabled>
+                    ▶ Run Tests
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const projectId = '{{ project.id }}';
+        const socket = io();
+
+        // Store specs locally for editing
+        let testSpecs = {{ project.test_specs | tojson | safe }};
+        let criteriaCounter = 0;
+
+        // Test Templates
+        const templates = {
+            login: {
+                name: 'User Login Test',
+                category: 'authentication',
+                priority: 'high',
+                description: 'Test the login functionality: enter valid credentials, click submit, and verify successful login',
+                acceptance_criteria: [
+                    { type: 'url_contains', value: 'dashboard', description: 'URL changes to dashboard' },
+                    { type: 'text_visible', value: 'Welcome', description: 'Welcome message appears' }
+                ]
+            },
+            form: {
+                name: 'Form Submission Test',
+                category: 'forms',
+                priority: 'medium',
+                description: 'Fill out the form with valid data and submit. Verify success message appears.',
+                acceptance_criteria: [
+                    { type: 'text_visible', value: 'success', description: 'Success message appears' },
+                    { type: 'element_visible', value: '.success, .alert-success', description: 'Success alert is visible' }
+                ]
+            },
+            navigation: {
+                name: 'Navigation Test',
+                category: 'navigation',
+                priority: 'medium',
+                description: 'Click through all main navigation items and verify each page loads correctly',
+                acceptance_criteria: [
+                    { type: 'element_visible', value: 'nav, .navigation, .sidebar', description: 'Navigation is visible' }
+                ]
+            },
+            crud: {
+                name: 'CRUD Operations Test',
+                category: 'crud',
+                priority: 'high',
+                description: 'Test create, read, update, and delete operations on a data item',
+                acceptance_criteria: [
+                    { type: 'text_visible', value: 'saved', description: 'Save confirmation appears' }
+                ]
+            },
+            search: {
+                name: 'Search Functionality Test',
+                category: 'search',
+                priority: 'medium',
+                description: 'Enter a search query and verify results are displayed',
+                acceptance_criteria: [
+                    { type: 'element_count', value: '1', selector: '.search-result, .result', description: 'At least one result appears' }
+                ]
+            },
+            responsive: {
+                name: 'Responsive Design Check',
+                category: 'ui',
+                priority: 'low',
+                description: 'Check that the page displays correctly and all elements are accessible',
+                acceptance_criteria: [
+                    { type: 'element_visible', value: 'main, .content, #app', description: 'Main content is visible' }
+                ]
+            }
+        };
+
+        // Tab switching
+        function showTab(name) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            document.getElementById('panel-' + name).classList.remove('hidden');
+            document.getElementById('tab-' + name).classList.add('active');
+        }
+
+        // Settings modal
+        function showSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+        function hideSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        document.getElementById('settingsModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) hideSettings();
+        });
+
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('settings-name').value,
+                url: document.getElementById('settings-url').value,
+                login_url: document.getElementById('settings-login-url').value,
+                email: document.getElementById('settings-email').value,
+                password: document.getElementById('settings-password').value
+            };
+
+            const resp = await fetch('/project/' + projectId + '/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            if ((await resp.json()).success) {
+                location.reload();
+            }
+        });
+
+        function deleteProject() {
+            if (confirm('Delete this project? This cannot be undone.')) {
+                fetch('/project/' + projectId + '/delete', { method: 'POST' })
+                    .then(() => window.location.href = '/');
+            }
+        }
+
+        // Spec Modal Functions
+        function openSpecModal(specId = null) {
+            document.getElementById('specModal').classList.remove('hidden');
+            document.getElementById('specModalTitle').textContent = specId ? 'Edit Test Specification' : 'Add Test Specification';
+            document.getElementById('criteriaList').innerHTML = '';
+            criteriaCounter = 0;
+
+            if (specId) {
+                const spec = testSpecs.find(s => s.id === specId);
+                if (spec) {
+                    document.getElementById('spec-id').value = spec.id;
+                    document.getElementById('spec-name').value = spec.name;
+                    document.getElementById('spec-category').value = spec.category || 'other';
+                    document.getElementById('spec-priority').value = spec.priority || 'medium';
+                    document.getElementById('spec-description').value = spec.description;
+
+                    if (spec.acceptance_criteria) {
+                        spec.acceptance_criteria.forEach(c => addCriteriaRow(c.type, c.value, c.selector));
+                    }
+                }
+            } else {
+                document.getElementById('spec-id').value = '';
+                document.getElementById('specForm').reset();
+            }
+        }
+
+        function closeSpecModal() {
+            document.getElementById('specModal').classList.add('hidden');
+        }
+
+        document.getElementById('specModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeSpecModal();
+        });
+
+        function addCriteria() {
+            addCriteriaRow('url_contains', '');
+        }
+
+        function addQuickCriteria(type, defaultValue) {
+            addCriteriaRow(type, defaultValue);
+        }
+
+        function addCriteriaRow(type = 'url_contains', value = '', selector = '') {
+            criteriaCounter++;
+            const id = criteriaCounter;
+            const html = `
+                <div class="flex items-center space-x-2 criteria-row" data-id="${id}">
+                    <select class="input-glass text-sm flex-shrink-0" style="width: 140px" id="criteria-type-${id}">
+                        <option value="url_contains" ${type === 'url_contains' ? 'selected' : ''}>URL contains</option>
+                        <option value="element_visible" ${type === 'element_visible' ? 'selected' : ''}>Element visible</option>
+                        <option value="text_visible" ${type === 'text_visible' ? 'selected' : ''}>Text appears</option>
+                        <option value="element_count" ${type === 'element_count' ? 'selected' : ''}>Element count >=</option>
+                    </select>
+                    <input type="text" class="input-glass text-sm flex-1" id="criteria-value-${id}"
+                        placeholder="${type === 'element_visible' ? 'CSS selector' : 'Value'}" value="${value}">
+                    ${type === 'element_count' ? `<input type="text" class="input-glass text-sm" style="width: 120px" id="criteria-selector-${id}" placeholder="Selector" value="${selector}">` : ''}
+                    <button type="button" onclick="removeCriteria(${id})" class="text-red-400 hover:text-red-300 p-1">✕</button>
+                </div>
+            `;
+            document.getElementById('criteriaList').insertAdjacentHTML('beforeend', html);
+        }
+
+        function removeCriteria(id) {
+            document.querySelector(`.criteria-row[data-id="${id}"]`)?.remove();
+        }
+
+        // Form submission
+        document.getElementById('specForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const specId = document.getElementById('spec-id').value;
+            const isEdit = !!specId;
+
+            // Collect acceptance criteria
+            const criteria = [];
+            document.querySelectorAll('.criteria-row').forEach(row => {
+                const id = row.dataset.id;
+                const type = document.getElementById(`criteria-type-${id}`).value;
+                const value = document.getElementById(`criteria-value-${id}`).value;
+                const selectorEl = document.getElementById(`criteria-selector-${id}`);
+
+                if (value) {
+                    const c = { type, value };
+                    if (selectorEl?.value) c.selector = selectorEl.value;
+                    c.description = `${type}: ${value}`;
+                    criteria.push(c);
+                }
+            });
+
+            const spec = {
+                id: specId || 'spec_' + Date.now(),
+                name: document.getElementById('spec-name').value,
+                category: document.getElementById('spec-category').value,
+                priority: document.getElementById('spec-priority').value,
+                description: document.getElementById('spec-description').value,
+                acceptance_criteria: criteria,
+                enabled: true
+            };
+
+            // Update local array
+            if (isEdit) {
+                const idx = testSpecs.findIndex(s => s.id === specId);
+                if (idx >= 0) testSpecs[idx] = spec;
+            } else {
+                testSpecs.push(spec);
+            }
+
+            // Save to server
+            await saveSpecs();
+            closeSpecModal();
+            renderSpecs();
+        });
+
+        async function saveSpecs() {
+            await fetch(`/project/${projectId}/specs`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ specs: testSpecs })
+            });
+        }
+
+        function renderSpecs() {
+            const container = document.getElementById('specsList');
+            const empty = document.getElementById('emptySpecs');
+
+            if (testSpecs.length === 0) {
+                container.innerHTML = '';
+                if (empty) empty.classList.remove('hidden');
+                document.getElementById('specCount').textContent = '0 tests';
+                return;
+            }
+
+            if (empty) empty.classList.add('hidden');
+            document.getElementById('specCount').textContent = `${testSpecs.length} tests`;
+
+            container.innerHTML = testSpecs.map(spec => `
+                <div class="glass-subtle p-4 rounded-lg spec-item" data-spec-id="${spec.id}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start space-x-4">
+                            <input type="checkbox" ${spec.enabled !== false ? 'checked' : ''}
+                                class="spec-checkbox checkbox-glass mt-1" data-id="${spec.id}"
+                                onchange="toggleSpec('${spec.id}', this.checked)">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <span class="font-medium text-white">${spec.name}</span>
+                                    <span class="badge badge-neutral text-xs">${spec.category || 'other'}</span>
+                                    <span class="badge ${spec.priority === 'high' ? 'badge-error' : spec.priority === 'medium' ? 'badge-warning' : 'badge-neutral'} text-xs">
+                                        ${spec.priority || 'medium'}
+                                    </span>
+                                </div>
+                                <p class="text-slate-400 text-sm mb-2">${spec.description}</p>
+                                ${spec.acceptance_criteria?.length ? `
+                                <div class="flex flex-wrap gap-1">
+                                    ${spec.acceptance_criteria.map(c => `
+                                        <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                            ${c.type}: ${(c.value || '').substring(0, 20)}${(c.value || '').length > 20 ? '...' : ''}
+                                        </span>
+                                    `).join('')}
+                                </div>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="editSpec('${spec.id}')" class="text-slate-500 hover:text-white transition p-1" title="Edit">✏️</button>
+                            <button onclick="duplicateSpec('${spec.id}')" class="text-slate-500 hover:text-white transition p-1" title="Duplicate">📋</button>
+                            <button onclick="deleteSpec('${spec.id}')" class="text-slate-500 hover:text-red-400 transition p-1" title="Delete">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function editSpec(id) {
+            openSpecModal(id);
+        }
+
+        async function deleteSpec(id) {
+            if (!confirm('Delete this test spec?')) return;
+            testSpecs = testSpecs.filter(s => s.id !== id);
+            await saveSpecs();
+            renderSpecs();
+        }
+
+        async function duplicateSpec(id) {
+            const spec = testSpecs.find(s => s.id === id);
+            if (!spec) return;
+
+            const newSpec = {
+                ...spec,
+                id: 'spec_' + Date.now(),
+                name: spec.name + ' (Copy)'
+            };
+            testSpecs.push(newSpec);
+            await saveSpecs();
+            renderSpecs();
+        }
+
+        async function toggleSpec(id, enabled) {
+            const spec = testSpecs.find(s => s.id === id);
+            if (spec) {
+                spec.enabled = enabled;
+                await saveSpecs();
+            }
+        }
+
+        function useTemplate(templateName) {
+            const template = templates[templateName];
+            if (!template) return;
+
+            document.getElementById('spec-id').value = '';
+            document.getElementById('spec-name').value = template.name;
+            document.getElementById('spec-category').value = template.category;
+            document.getElementById('spec-priority').value = template.priority;
+            document.getElementById('spec-description').value = template.description;
+
+            document.getElementById('criteriaList').innerHTML = '';
+            criteriaCounter = 0;
+
+            if (template.acceptance_criteria) {
+                template.acceptance_criteria.forEach(c => {
+                    addCriteriaRow(c.type, c.value, c.selector);
+                });
+            }
+
+            document.getElementById('specModal').classList.remove('hidden');
+            document.getElementById('specModalTitle').textContent = 'Add Test from Template';
+        }
+
+        // Crawl functionality
+        function startCrawl() {
+            const btn = document.getElementById('crawlBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="flex items-center space-x-2"><span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>Analyzing...</span></span>';
+            }
+
+            const progress = document.getElementById('crawlProgress');
+            if (progress) progress.classList.remove('hidden');
+
+            socket.emit('start_crawl', { project_id: projectId });
+        }
+
+        socket.on('crawl_progress', (data) => {
+            const log = document.getElementById('crawlLog');
+            if (log) {
+                log.innerHTML += '<div class="animate-fade-in py-1">' + data.message + '</div>';
+                log.scrollTop = log.scrollHeight;
+            }
+        });
+
+        socket.on('crawl_complete', () => {
+            location.reload();
+        });
+
+        socket.on('crawl_error', (data) => {
+            alert('Error: ' + data.message);
+            location.reload();
+        });
+
+        // Test functionality
+        function sendChat() {
+            const input = document.getElementById('chatInput');
+            const command = input.value.trim();
+            if (!command) return;
+
+            addChatMessage('You: ' + command, 'user');
+            input.value = '';
+
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('sendBtn').innerHTML = '<span class="flex items-center space-x-2"><span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>Running...</span></span>';
+
+            socket.emit('run_test', { project_id: projectId, command: command });
+        }
+
+        function quickTest(command) {
+            document.getElementById('chatInput').value = command;
+            sendChat();
+        }
+
+        function addChatMessage(text, type) {
+            const log = document.getElementById('chatLog');
+            const div = document.createElement('div');
+            div.className = 'animate-fade-in text-sm ' + (type === 'user' ? 'chat-message-user' : 'chat-message-bot');
+            div.textContent = text;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        socket.on('test_progress', (data) => {
+            addChatMessage('🤖 ' + data.message, 'bot');
+        });
+
+        socket.on('test_screenshot', (data) => {
+            document.getElementById('livePreview').innerHTML = '<div class="text-center text-slate-400 text-sm p-4">📸 Screenshot captured</div>';
+        });
+
+        socket.on('test_complete', (data) => {
+            addChatMessage('✅ Test completed!', 'bot');
+            addChatMessage('📊 View report: ' + data.report_url, 'bot');
+
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('sendBtn').innerHTML = '▶ Run';
+
+            document.getElementById('testStatus').innerHTML =
+                '<a href="' + data.report_url + '" class="text-blue-400 hover:text-blue-300 transition">View Full Report →</a>';
+        });
+
+        socket.on('test_error', (data) => {
+            addChatMessage('❌ Error: ' + data.message, 'bot');
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('sendBtn').innerHTML = '▶ Run';
+        });
+
+        // Select All / Deselect All
+        function selectAllSpecs(checked) {
+            document.querySelectorAll('.spec-checkbox').forEach(cb => {
+                cb.checked = checked;
+                const specId = cb.dataset.id;
+                const spec = testSpecs.find(s => s.id === specId);
+                if (spec) spec.enabled = checked;
+            });
+            saveSpecs();
+        }
+
+        // Confirmation Modal
+        let selectedSpecIds = [];
+
+        function confirmAndRunSpecs() {
+            selectedSpecIds = [];
+            document.querySelectorAll('.spec-checkbox:checked').forEach(cb => {
+                selectedSpecIds.push(cb.dataset.id);
+            });
+
+            if (selectedSpecIds.length === 0) {
+                alert('Select at least one test to run');
+                return;
+            }
+
+            // Build confirmation list
+            const list = document.getElementById('confirmSpecsList');
+            list.innerHTML = selectedSpecIds.map(id => {
+                const spec = testSpecs.find(s => s.id === id);
+                if (!spec) return '';
+
+                const criteria = spec.acceptance_criteria || [];
+                return `
+                    <div class="glass-subtle p-4 rounded-lg">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <span class="font-medium text-white">${spec.name}</span>
+                            <span class="badge badge-neutral text-xs">${spec.category || 'other'}</span>
+                        </div>
+                        <p class="text-slate-400 text-sm mb-2">${spec.description}</p>
+                        ${criteria.length > 0 ? `
+                            <div class="text-xs text-slate-500 mb-1">Acceptance Criteria:</div>
+                            <ul class="text-sm text-slate-300 space-y-1">
+                                ${criteria.map(c => `
+                                    <li class="flex items-center space-x-2">
+                                        <span class="text-blue-400">✓</span>
+                                        <span>${c.description || c.type + ': ' + c.value}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        ` : '<p class="text-yellow-400 text-xs">⚠ No acceptance criteria defined</p>'}
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('confirmSpecCount').textContent = selectedSpecIds.length;
+            document.getElementById('confirmCriteria').checked = false;
+            document.getElementById('proceedBtn').disabled = true;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        document.getElementById('confirmCriteria')?.addEventListener('change', function() {
+            document.getElementById('proceedBtn').disabled = !this.checked;
+        });
+
+        document.getElementById('confirmModal')?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeConfirmModal();
+        });
+
+        function proceedWithRun() {
+            closeConfirmModal();
+            showTab('test');
+            addChatMessage('Running ' + selectedSpecIds.length + ' test specs...', 'user');
+            socket.emit('run_spec', { project_id: projectId, spec_ids: selectedSpecIds });
+        }
+
+        socket.on('spec_start', (data) => {
+            addChatMessage('▶ Starting: ' + data.spec.name, 'bot');
+        });
+
+        socket.on('spec_complete', (data) => {
+            const status = data.result.status === 'passed' ? '✅' : '❌';
+            addChatMessage(status + ' ' + data.spec.name + ': ' + data.result.status, 'bot');
+        });
+
+        socket.on('all_specs_complete', (data) => {
+            const passed = data.results.filter(r => r.status === 'passed').length;
+            addChatMessage('🏁 Done! ' + passed + '/' + data.results.length + ' tests passed', 'bot');
+
+            document.getElementById('testStatus').innerHTML =
+                '<a href="' + data.report_url + '" class="text-blue-400 hover:text-blue-300 transition">View Full Report →</a>';
+        });
+
+        // Team Management
+        function showInviteForm() {
+            document.getElementById('inviteForm').classList.toggle('hidden');
+        }
+
+        async function inviteTeamMember() {
+            const email = document.getElementById('invite-email').value.trim();
+            const role = document.getElementById('invite-role').value;
+
+            if (!email) {
+                alert('Please enter an email address');
+                return;
+            }
+
+            const resp = await fetch(`/project/${projectId}/team`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email, role })
+            });
+
+            const result = await resp.json();
+            if (result.success) {
+                document.getElementById('invite-email').value = '';
+                document.getElementById('inviteForm').classList.add('hidden');
+                renderTeamList(result.team);
+            } else {
+                alert(result.error || 'Failed to add team member');
+            }
+        }
+
+        async function removeTeamMember(email) {
+            if (!confirm(`Remove ${email} from the team?`)) return;
+
+            const resp = await fetch(`/project/${projectId}/team`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email })
+            });
+
+            const result = await resp.json();
+            if (result.success) {
+                renderTeamList(result.team);
+            }
+        }
+
+        function renderTeamList(team) {
+            const container = document.getElementById('teamList');
+            const noMsg = document.getElementById('noTeamMsg');
+
+            if (!team || team.length === 0) {
+                container.innerHTML = '';
+                if (noMsg) noMsg.classList.remove('hidden');
+                return;
+            }
+
+            if (noMsg) noMsg.classList.add('hidden');
+
+            container.innerHTML = team.map(member => `
+                <div class="flex items-center justify-between p-2 glass-subtle rounded-lg text-sm">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-medium">
+                            ${member.email[0].toUpperCase()}
+                        </span>
+                        <span class="text-slate-300">${member.email}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="badge badge-neutral text-xs">${member.role}</span>
+                        <button onclick="removeTeamMember('${member.email}')" class="text-slate-500 hover:text-red-400 text-xs">✕</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issues Dashboard - AlphaTest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/theme.css">
+</head>
+<body>
+    <!-- Background Pattern -->
+    <div class="bg-pattern"></div>
+
+    <!-- Content Wrapper -->
+    <div class="relative z-10 min-h-screen">
+        <!-- Header -->
+        <header class="header-glass">
+            <div class="container mx-auto px-6 py-5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="/" class="btn-ghost text-sm">← Dashboard</a>
+                        <div class="w-px h-6 bg-white/20"></div>
+                        <div class="flex items-center space-x-3">
+                            <div class="icon-container">
+                                <span class="text-2xl">⚠️</span>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl font-bold text-white">Issues Dashboard</h1>
+                                <p class="text-slate-400 text-sm">Track issues across all projects</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <select id="filterProject" onchange="filterIssues()" class="input-glass text-sm py-2">
+                            <option value="all">All Projects</option>
+                            {% for id, project in projects.items() %}
+                            <option value="{{ id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="filterSeverity" onchange="filterIssues()" class="input-glass text-sm py-2">
+                            <option value="all">All Severities</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-6 py-8">
+            <!-- Summary Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="glass-card p-6 text-center">
+                    <div class="text-3xl font-bold text-white">{{ total_issues }}</div>
+                    <div class="text-slate-400 text-sm mt-1">Total Issues</div>
+                </div>
+                <div class="glass-card p-6 text-center">
+                    <div class="text-3xl font-bold text-red-400">{{ critical_count }}</div>
+                    <div class="text-slate-400 text-sm mt-1">Critical</div>
+                </div>
+                <div class="glass-card p-6 text-center">
+                    <div class="text-3xl font-bold text-orange-400">{{ high_count }}</div>
+                    <div class="text-slate-400 text-sm mt-1">High</div>
+                </div>
+                <div class="glass-card p-6 text-center">
+                    <div class="text-3xl font-bold text-yellow-400">{{ medium_count }}</div>
+                    <div class="text-slate-400 text-sm mt-1">Medium</div>
+                </div>
+            </div>
+
+            <!-- Issues by Project -->
+            {% if issues_by_project %}
+            <div class="space-y-6">
+                {% for project_id, project_data in issues_by_project.items() %}
+                <div class="glass-card p-6 project-section" data-project="{{ project_id }}">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="icon-container-sm">
+                                <span>🌐</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-white">{{ project_data.name }}</h3>
+                                <p class="text-slate-500 text-sm">{{ project_data.issues|length }} issues found</p>
+                            </div>
+                        </div>
+                        <a href="/project/{{ project_id }}" class="btn-ghost text-blue-400 text-sm">
+                            View Project →
+                        </a>
+                    </div>
+
+                    <div class="space-y-3">
+                        {% for issue in project_data.issues %}
+                        <div class="issue-item glass-subtle p-4 rounded-lg"
+                             data-severity="{{ issue.severity }}"
+                             data-project="{{ project_id }}">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-start space-x-3">
+                                    {% if issue.severity == 'critical' %}
+                                    <span class="text-xl">🔴</span>
+                                    {% elif issue.severity == 'high' %}
+                                    <span class="text-xl">🟠</span>
+                                    {% else %}
+                                    <span class="text-xl">🟡</span>
+                                    {% endif %}
+                                    <div>
+                                        <p class="font-medium text-white">{{ issue.message }}</p>
+                                        {% if issue.url %}
+                                        <p class="text-slate-500 text-sm mt-1 truncate max-w-md">{{ issue.url }}</p>
+                                        {% endif %}
+                                        <div class="flex items-center space-x-3 mt-2">
+                                            <span class="badge {% if issue.severity == 'critical' %}badge-error{% elif issue.severity == 'high' %}badge-warning{% else %}badge-neutral{% endif %} text-xs">
+                                                {{ issue.severity }}
+                                            </span>
+                                            <span class="text-xs text-slate-500">{{ issue.type }}</span>
+                                            {% if issue.report_date %}
+                                            <span class="text-xs text-slate-600">{{ issue.report_date }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if issue.report_id %}
+                                <a href="/reports/{{ project_id }}/{{ issue.report_id }}"
+                                   class="text-slate-500 hover:text-blue-400 text-sm transition">
+                                    View Report →
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="glass-card p-12 text-center max-w-lg mx-auto">
+                <div class="icon-container-lg mx-auto mb-6">
+                    <span>✅</span>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">No Issues Found</h3>
+                <p class="text-slate-400 mb-6">Run some tests to start tracking issues across your projects.</p>
+                <a href="/" class="btn-primary inline-flex items-center space-x-2">
+                    <span>Go to Dashboard</span>
+                    <span>→</span>
+                </a>
+            </div>
+            {% endif %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="container mx-auto px-6 py-8 text-center">
+            <p class="text-slate-500 text-sm">AlphaTest v1.0 — AI-Powered UAT Testing</p>
+        </footer>
+    </div>
+
+    <script>
+        function filterIssues() {
+            const projectFilter = document.getElementById('filterProject').value;
+            const severityFilter = document.getElementById('filterSeverity').value;
+
+            // Filter project sections
+            document.querySelectorAll('.project-section').forEach(section => {
+                const projectId = section.dataset.project;
+                const showProject = projectFilter === 'all' || projectFilter === projectId;
+
+                if (!showProject) {
+                    section.style.display = 'none';
+                    return;
+                }
+
+                // Filter issues within section
+                let visibleIssues = 0;
+                section.querySelectorAll('.issue-item').forEach(item => {
+                    const issueSeverity = item.dataset.severity;
+                    const showIssue = severityFilter === 'all' || severityFilter === issueSeverity;
+
+                    item.style.display = showIssue ? '' : 'none';
+                    if (showIssue) visibleIssues++;
+                });
+
+                // Hide section if no visible issues
+                section.style.display = visibleIssues > 0 ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
