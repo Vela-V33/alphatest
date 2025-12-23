@@ -20,8 +20,10 @@ from agent import AlphaTestAgent
 from report_generator import generate_report
 
 app = Flask(__name__)
-app.secret_key = 'alphatest-secret-key-2024'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+app.secret_key = os.environ.get('SECRET_KEY', 'alphatest-secret-key-2024-change-in-production')
+# Allow CORS from environment variable or default to all in development
+allowed_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '*')
+socketio = SocketIO(app, cors_allowed_origins=allowed_origins, async_mode='threading')
 
 # Data directories
 DATA_DIR = Path(__file__).parent / "data"
@@ -543,29 +545,39 @@ def handle_run_spec(data):
 
 def main():
     import webbrowser
-    
+
+    # Get port from environment variable (for cloud deployment) or default to 8080
+    port = int(os.environ.get('PORT', 8080))
+    is_production = os.environ.get('ENV') == 'production'
+
     print("")
     print("=" * 50)
     print("  🧪 AlphaTest - AI-Powered UAT Testing")
     print("=" * 50)
     print("")
-    print("  Opening in your browser...")
-    print("  URL: http://127.0.0.1:8080")
-    print("")
-    print("  Press Ctrl+C to stop")
-    print("=" * 50)
-    print("")
-    
-    # Open browser after a short delay
-    def open_browser():
-        import time
-        time.sleep(1.5)
-        webbrowser.open('http://127.0.0.1:8080')
-    
-    threading.Thread(target=open_browser, daemon=True).start()
-    
-    # Run server on port 8080
-    socketio.run(app, host='0.0.0.0', port=8080, debug=False, allow_unsafe_werkzeug=True)
+
+    if not is_production:
+        print("  Opening in your browser...")
+        print(f"  URL: http://127.0.0.1:{port}")
+        print("")
+        print("  Press Ctrl+C to stop")
+        print("=" * 50)
+        print("")
+
+        # Open browser after a short delay (only in local mode)
+        def open_browser():
+            import time
+            time.sleep(1.5)
+            webbrowser.open(f'http://127.0.0.1:{port}')
+
+        threading.Thread(target=open_browser, daemon=True).start()
+    else:
+        print(f"  Starting in production mode on port {port}")
+        print("=" * 50)
+        print("")
+
+    # Run server
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
 
 if __name__ == '__main__':
     main()
