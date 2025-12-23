@@ -55,10 +55,14 @@ class AlphaTestAgent:
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-gpu'
+                '--disable-software-rasterizer',
+                '--disable-extensions'
             ]
         )
-        self.page = await self.browser.new_page(viewport={'width': 1920, 'height': 1080})
+        self.page = await self.browser.new_page(
+            viewport={'width': 1920, 'height': 1080},
+            device_scale_factor=1
+        )
         
         # Setup session directory
         if session_dir:
@@ -74,17 +78,23 @@ class AlphaTestAgent:
         if self.browser:
             await self.browser.close()
     
-    async def wait_for_stable(self, timeout: int = 3000):
+    async def wait_for_stable(self, timeout: int = 5000):
         """Wait for page to be stable (no loading, animations complete)."""
+        try:
+            # Wait for DOM to be loaded first
+            await self.page.wait_for_load_state('domcontentloaded', timeout=timeout)
+        except:
+            pass
+
         try:
             # Wait for network to be idle
             await self.page.wait_for_load_state('networkidle', timeout=timeout)
         except:
             pass
-        
-        # Additional wait for any animations
-        await asyncio.sleep(0.3)
-        
+
+        # Additional wait for any animations and rendering
+        await asyncio.sleep(0.5)
+
         # Check for common loading indicators and wait for them to disappear
         loading_selectors = [
             '.loading', '.spinner', '[class*="loading"]', '[class*="spinner"]',
@@ -99,19 +109,32 @@ class AlphaTestAgent:
     async def screenshot(self, name: str, step_data: Dict = None) -> str:
         """Take and save screenshot with proper linking to step."""
         self.step_count += 1
-        
+
         # Wait for page to be stable
         await self.wait_for_stable()
-        
+
+        # Additional wait to ensure rendering is complete
+        await asyncio.sleep(0.5)
+
+        # Wait for body to be visible (ensure page has content)
+        try:
+            await self.page.wait_for_selector('body', state='visible', timeout=5000)
+        except:
+            pass
+
         # Generate filename
         safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)[:40]
         filename = f"{self.step_count:03d}_{safe_name}.png"
         filepath = self.session_dir / "screenshots" / filename
-        
+
         try:
-            # Take viewport screenshot (not full page - more reliable)
-            await self.page.screenshot(path=str(filepath), full_page=False)
-            
+            # Take full page screenshot for better visibility
+            await self.page.screenshot(
+                path=str(filepath),
+                full_page=True,
+                animations='disabled'
+            )
+
             # Verify file was created and has content
             if filepath.exists() and filepath.stat().st_size > 1000:
                 screenshot_data = {
