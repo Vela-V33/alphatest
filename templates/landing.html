@@ -195,6 +195,70 @@
             border: 1px solid rgba(16, 185, 129, 0.3);
             border-radius: 12px;
         }
+
+        /* Testimonial card */
+        .testimonial-card {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .testimonial-card:hover {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transform: translateY(-4px);
+        }
+
+        /* Trust badge */
+        .trust-badge {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* FAQ item */
+        .faq-item {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .faq-item:hover {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .faq-answer.active {
+            max-height: 500px;
+        }
+
+        /* Comparison table */
+        .comparison-table {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comparison-row {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .comparison-row:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body class="min-h-screen text-white">
@@ -216,6 +280,7 @@
                 <div class="hidden md:flex items-center space-x-4">
                     <a href="#features" class="hover:text-green-300 transition">Features</a>
                     <a href="#uat-types" class="hover:text-green-300 transition">UAT Coverage</a>
+                    <a href="#faq" class="hover:text-green-300 transition">FAQ</a>
                     <a href="#pricing" class="hover:text-green-300 transition">Pricing</a>
                     <a href="/login" class="px-3 py-1 btn-glass rounded-lg font-semibold">Login</a>
                     <a href="/signup" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition">Sign Up Free</a>
@@ -259,6 +324,22 @@
                         <div class="stat-panel rounded-lg p-2">
                             <div class="text-2xl font-black text-green-400">< 2min</div>
                             <div class="text-xs text-white/70">Avg Test</div>
+                        </div>
+                    </div>
+
+                    <!-- Trust Badges -->
+                    <div class="flex flex-wrap gap-2 mt-4 justify-center">
+                        <div class="trust-badge">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-green-400"></i>
+                            <span class="text-xs text-white/90">SOC 2 Compliant</span>
+                        </div>
+                        <div class="trust-badge">
+                            <i data-lucide="lock" class="w-4 h-4 text-green-400"></i>
+                            <span class="text-xs text-white/90">256-bit SSL</span>
+                        </div>
+                        <div class="trust-badge">
+                            <i data-lucide="clock" class="w-4 h-4 text-green-400"></i>
+                            <span class="text-xs text-white/90">99.9% Uptime SLA</span>
                         </div>
                     </div>
                 </div>
@@ -366,6 +447,86 @@
         </div>
     </section>
 
+    <!-- Testimonials Section -->
+    <section class="py-10 px-3">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-5xl font-black text-center mb-2">Trusted by Fast-Shipping Teams</h2>
+            <p class="text-xl text-center text-white/70 mb-6">See what developers are saying about AlphaTest</p>
+
+            <div class="grid md:grid-cols-3 gap-4 mb-8">
+                <!-- Testimonial 1 -->
+                <div class="testimonial-card rounded-2xl p-4">
+                    <div class="flex items-center mb-3">
+                        <img src="https://i.pravatar.cc/80?img=12" alt="Sarah Chen" class="w-12 h-12 rounded-full mr-3">
+                        <div>
+                            <div class="font-bold">Sarah Chen</div>
+                            <div class="text-sm text-white/60">Lead Developer, TechCorp</div>
+                        </div>
+                    </div>
+                    <div class="flex mb-2">
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                    </div>
+                    <p class="text-white/80 italic">"AlphaTest cut our QA time from 2 weeks to 2 days. The AI-powered testing catches issues we'd miss manually. Game changer for our team."</p>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="testimonial-card rounded-2xl p-4">
+                    <div class="flex items-center mb-3">
+                        <img src="https://i.pravatar.cc/80?img=33" alt="Marcus Rodriguez" class="w-12 h-12 rounded-full mr-3">
+                        <div>
+                            <div class="font-bold">Marcus Rodriguez</div>
+                            <div class="text-sm text-white/60">CTO, StartupHub</div>
+                        </div>
+                    </div>
+                    <div class="flex mb-2">
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                    </div>
+                    <p class="text-white/80 italic">"We saved $120k/year by replacing our QA team with AlphaTest. The ROI was immediate. Best investment we made this year."</p>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="testimonial-card rounded-2xl p-4">
+                    <div class="flex items-center mb-3">
+                        <img src="https://i.pravatar.cc/80?img=47" alt="Emily Watson" class="w-12 h-12 rounded-full mr-3">
+                        <div>
+                            <div class="font-bold">Emily Watson</div>
+                            <div class="text-sm text-white/60">Product Manager, SaaSCo</div>
+                        </div>
+                    </div>
+                    <div class="flex mb-2">
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                    </div>
+                    <p class="text-white/80 italic">"The AI acceptance criteria feature is incredible. It understands our test requirements better than most junior QA engineers."</p>
+                </div>
+            </div>
+
+            <!-- Company Logos -->
+            <div class="glass rounded-2xl p-4">
+                <p class="text-center text-white/60 text-sm mb-3">Trusted by development teams at</p>
+                <div class="flex flex-wrap justify-center items-center gap-8 opacity-60">
+                    <div class="text-white/70 font-bold text-lg">TechCorp</div>
+                    <div class="text-white/70 font-bold text-lg">StartupHub</div>
+                    <div class="text-white/70 font-bold text-lg">SaaSCo</div>
+                    <div class="text-white/70 font-bold text-lg">DevTools Inc</div>
+                    <div class="text-white/70 font-bold text-lg">CloudFlow</div>
+                    <div class="text-white/70 font-bold text-lg">AppForge</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- UAT Types Coverage -->
     <section id="uat-types" class="py-10 px-3">
         <div class="max-w-7xl mx-auto">
@@ -452,6 +613,215 @@
                             Monetization & Paywall UAT
                         </h3>
                         <p class="text-white/70">Test payment flows, subscriptions, and revenue features</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Table Section -->
+    <section class="py-10 px-3">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-5xl font-black text-center mb-2">AlphaTest vs. Manual QA</h2>
+            <p class="text-xl text-center text-white/70 mb-6">See how we compare to traditional testing approaches</p>
+
+            <div class="comparison-table rounded-3xl overflow-hidden">
+                <!-- Header Row -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4 bg-white/5">
+                    <div class="font-bold"></div>
+                    <div class="font-bold text-center text-green-400">AlphaTest</div>
+                    <div class="font-bold text-center text-white/60">Manual QA Team</div>
+                </div>
+
+                <!-- Time per Test -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4">
+                    <div class="flex items-center">
+                        <i data-lucide="clock" class="w-5 h-5 mr-2 text-green-400"></i>
+                        <span>Time per Test</span>
+                    </div>
+                    <div class="text-center font-bold text-green-400">< 2 minutes</div>
+                    <div class="text-center text-white/60">2-4 hours</div>
+                </div>
+
+                <!-- Monthly Cost -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4">
+                    <div class="flex items-center">
+                        <i data-lucide="dollar-sign" class="w-5 h-5 mr-2 text-green-400"></i>
+                        <span>Monthly Cost</span>
+                    </div>
+                    <div class="text-center font-bold text-green-400">$199 - $499</div>
+                    <div class="text-center text-white/60">$8,000 - $25,000</div>
+                </div>
+
+                <!-- Test Coverage -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4">
+                    <div class="flex items-center">
+                        <i data-lucide="check-circle" class="w-5 h-5 mr-2 text-green-400"></i>
+                        <span>Test Coverage</span>
+                    </div>
+                    <div class="text-center font-bold text-green-400">All 10 UAT types</div>
+                    <div class="text-center text-white/60">Limited by bandwidth</div>
+                </div>
+
+                <!-- Setup Time -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4">
+                    <div class="flex items-center">
+                        <i data-lucide="zap" class="w-5 h-5 mr-2 text-green-400"></i>
+                        <span>Setup Time</span>
+                    </div>
+                    <div class="text-center font-bold text-green-400">5 minutes</div>
+                    <div class="text-center text-white/60">2-4 weeks</div>
+                </div>
+
+                <!-- AI-Powered Insights -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4">
+                    <div class="flex items-center">
+                        <i data-lucide="brain" class="w-5 h-5 mr-2 text-green-400"></i>
+                        <span>AI-Powered Insights</span>
+                    </div>
+                    <div class="text-center">
+                        <i data-lucide="check" class="w-6 h-6 text-green-400 inline"></i>
+                    </div>
+                    <div class="text-center">
+                        <i data-lucide="x" class="w-6 h-6 text-red-400 inline"></i>
+                    </div>
+                </div>
+
+                <!-- 24/7 Availability -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4">
+                    <div class="flex items-center">
+                        <i data-lucide="clock-3" class="w-5 h-5 mr-2 text-green-400"></i>
+                        <span>24/7 Availability</span>
+                    </div>
+                    <div class="text-center">
+                        <i data-lucide="check" class="w-6 h-6 text-green-400 inline"></i>
+                    </div>
+                    <div class="text-center">
+                        <i data-lucide="x" class="w-6 h-6 text-red-400 inline"></i>
+                    </div>
+                </div>
+
+                <!-- Scalability -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4">
+                    <div class="flex items-center">
+                        <i data-lucide="trending-up" class="w-5 h-5 mr-2 text-green-400"></i>
+                        <span>Scalability</span>
+                    </div>
+                    <div class="text-center font-bold text-green-400">Unlimited</div>
+                    <div class="text-center text-white/60">Requires hiring</div>
+                </div>
+
+                <!-- Consistency -->
+                <div class="comparison-row grid grid-cols-3 gap-4 p-4">
+                    <div class="flex items-center">
+                        <i data-lucide="repeat" class="w-5 h-5 mr-2 text-green-400"></i>
+                        <span>Test Consistency</span>
+                    </div>
+                    <div class="text-center font-bold text-green-400">100%</div>
+                    <div class="text-center text-white/60">Varies</div>
+                </div>
+            </div>
+
+            <div class="text-center mt-6">
+                <a href="/signup" class="inline-block px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition transform hover:scale-105">
+                    Start Saving Time & Money →
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-10 px-3 bg-black/10">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-5xl font-black text-center mb-2">Frequently Asked Questions</h2>
+            <p class="text-xl text-center text-white/70 mb-6">Everything you need to know about AlphaTest</p>
+
+            <div class="space-y-3">
+                <!-- FAQ 1 -->
+                <div class="faq-item p-4">
+                    <button class="faq-question w-full flex items-center justify-between text-left" onclick="toggleFAQ(this)">
+                        <span class="font-bold text-lg">How is AlphaTest different from Selenium or Cypress?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-green-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-answer mt-3 text-white/80">
+                        <p>AlphaTest uses AI to understand your application and generate test scenarios automatically. Unlike Selenium or Cypress which require writing test scripts, AlphaTest uses natural language commands and AI-powered acceptance criteria. You simply describe what you want to test, and our AI handles the rest.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ 2 -->
+                <div class="faq-item p-4">
+                    <button class="faq-question w-full flex items-center justify-between text-left" onclick="toggleFAQ(this)">
+                        <span class="font-bold text-lg">Can I test staging or local environments?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-green-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-answer mt-3 text-white/80">
+                        <p>Yes! AlphaTest can test any publicly accessible URL, including staging environments, preview deployments, and production. For local development environments, you can use our tunnel feature or deploy to a staging environment first.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ 3 -->
+                <div class="faq-item p-4">
+                    <button class="faq-question w-full flex items-center justify-between text-left" onclick="toggleFAQ(this)">
+                        <span class="font-bold text-lg">Do I need coding skills to use AlphaTest?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-green-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-answer mt-3 text-white/80">
+                        <p>No coding required! AlphaTest uses natural language test commands. Simply describe what you want to test (e.g., "Login with test@example.com and password123, then verify dashboard loads") and our AI handles the technical execution.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ 4 -->
+                <div class="faq-item p-4">
+                    <button class="faq-question w-full flex items-center justify-between text-left" onclick="toggleFAQ(this)">
+                        <span class="font-bold text-lg">What browsers and devices are supported?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-green-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-answer mt-3 text-white/80">
+                        <p>AlphaTest currently supports Chromium-based browsers (Chrome, Edge) on desktop, with mobile and additional browser support coming soon. All tests run on our cloud infrastructure at 1920x1080 resolution.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ 5 -->
+                <div class="faq-item p-4">
+                    <button class="faq-question w-full flex items-center justify-between text-left" onclick="toggleFAQ(this)">
+                        <span class="font-bold text-lg">How long does it take to set up?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-green-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-answer mt-3 text-white/80">
+                        <p>You can run your first test in under 5 minutes. Simply sign up, create a project, enter your application URL, and start testing. No installation, no configuration files, no complex setup.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ 6 -->
+                <div class="faq-item p-4">
+                    <button class="faq-question w-full flex items-center justify-between text-left" onclick="toggleFAQ(this)">
+                        <span class="font-bold text-lg">Can I cancel my subscription anytime?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-green-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-answer mt-3 text-white/80">
+                        <p>Absolutely! No contracts, no commitments. Cancel anytime from your account settings. Your tests and reports remain accessible until the end of your billing period.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ 7 -->
+                <div class="faq-item p-4">
+                    <button class="faq-question w-full flex items-center justify-between text-left" onclick="toggleFAQ(this)">
+                        <span class="font-bold text-lg">Is my data secure?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-green-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-answer mt-3 text-white/80">
+                        <p>Yes. All data is encrypted in transit (256-bit SSL) and at rest. We're SOC 2 compliant and follow industry best practices for data security. Test credentials are encrypted and never logged. We never store sensitive data from your application.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ 8 -->
+                <div class="faq-item p-4">
+                    <button class="faq-question w-full flex items-center justify-between text-left" onclick="toggleFAQ(this)">
+                        <span class="font-bold text-lg">What happens if I exceed my test limit?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-green-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-answer mt-3 text-white/80">
+                        <p>We'll notify you when you're approaching your monthly test limit. You can upgrade to a higher plan anytime, or purchase additional test packs. Tests are never blocked - we'll discuss options with you before any charges apply.</p>
                     </div>
                 </div>
             </div>
@@ -755,6 +1125,23 @@
             }
         });
     });
+
+    // FAQ Toggle Function
+    function toggleFAQ(button) {
+        const faqItem = button.parentElement;
+        const answer = faqItem.querySelector('.faq-answer');
+        const icon = button.querySelector('[data-lucide="chevron-down"]');
+
+        // Toggle active class
+        answer.classList.toggle('active');
+
+        // Rotate icon
+        if (answer.classList.contains('active')) {
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
 </script>
 
 </body>
