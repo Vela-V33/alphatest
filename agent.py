@@ -44,6 +44,13 @@ class AlphaTestAgent:
         self.step_count = 0
         self.session_dir = None
         self.current_test = None
+
+        # Performance and error tracking
+        self.console_logs = []
+        self.console_errors = []
+        self.network_errors = []
+        self.performance_metrics = []
+        self.page_timings = {}
     
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
@@ -78,6 +85,11 @@ class AlphaTestAgent:
 
         self.page = await context.new_page()
 
+        # Setup console and error listeners
+        self.page.on("console", lambda msg: self._handle_console(msg))
+        self.page.on("pageerror", lambda err: self._handle_page_error(err))
+        self.page.on("requestfailed", lambda req: self._handle_network_error(req))
+
         # Setup session directory
         if session_dir:
             self.session_dir = Path(session_dir)
@@ -91,7 +103,64 @@ class AlphaTestAgent:
         """Close browser."""
         if self.browser:
             await self.browser.close()
-    
+
+    def _handle_console(self, msg):
+        """Capture console messages."""
+        log_entry = {
+            'type': msg.type,
+            'text': msg.text,
+            'timestamp': datetime.now().isoformat(),
+            'url': msg.location.get('url', '') if msg.location else ''
+        }
+        self.console_logs.append(log_entry)
+
+        if msg.type in ['error', 'warning']:
+            self.console_errors.append(log_entry)
+            if msg.type == 'error':
+                self.status(f"   ⚠️ Console Error: {msg.text}")
+
+    def _handle_page_error(self, error):
+        """Capture page errors."""
+        error_entry = {
+            'message': str(error),
+            'timestamp': datetime.now().isoformat()
+        }
+        self.console_errors.append(error_entry)
+        self.status(f"   ❌ Page Error: {error}")
+
+    def _handle_network_error(self, request):
+        """Capture failed network requests."""
+        error_entry = {
+            'url': request.url,
+            'method': request.method,
+            'failure': request.failure,
+            'timestamp': datetime.now().isoformat()
+        }
+        self.network_errors.append(error_entry)
+        self.status(f"   🌐 Network Error: {request.method} {request.url}")
+
+    async def capture_performance_metrics(self) -> Dict:
+        """Capture current page performance metrics."""
+        try:
+            metrics = await self.page.evaluate('''() => {
+                const perf = window.performance;
+                const timing = perf.timing;
+                const navigation = perf.getEntriesByType('navigation')[0];
+
+                return {
+                    loadTime: timing.loadEventEnd - timing.navigationStart,
+                    domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
+                    timeToInteractive: navigation ? navigation.domInteractive : 0,
+                    resourceCount: perf.getEntriesByType('resource').length,
+                    url: window.location.href
+                };
+            }''')
+            metrics['timestamp'] = datetime.now().isoformat()
+            self.performance_metrics.append(metrics)
+            return metrics
+        except:
+            return {}
+
     async def wait_for_stable(self, timeout: int = 5000):
         """Wait for page to be stable (no loading, animations complete)."""
         try:
@@ -179,9 +248,65 @@ class AlphaTestAgent:
                 
         except Exception as e:
             self.status(f"   ⚠️ Screenshot failed: {e}")
-        
+
         return ""
-    
+
+    async def generate_acceptance_criteria(self, test_command: str, context: str = "") -> List[str]:
+        """Generate natural language acceptance criteria from a test command using AI."""
+        self.status("🤔 Generating acceptance criteria...")
+
+        prompt = f"""Given this test command: "{test_command}"
+
+Context: {context if context else "A web application"}
+
+Generate 3-5 clear, natural language acceptance criteria that define what success looks like for this test.
+
+Format as a simple list, one per line, like:
+- New asset is created successfully
+- Asset appears in the asset list
+- Asset details are saved correctly
+
+Keep criteria:
+- Simple and actionable
+- User-focused (not technical)
+- Verifiable through the UI
+- Specific to the test command
+
+Criteria:"""
+
+        try:
+            response = self.client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=500,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            criteria_text = response.content[0].text.strip()
+
+            # Parse the criteria
+            criteria = []
+            for line in criteria_text.split('\n'):
+                line = line.strip()
+                if line and (line.startswith('-') or line.startswith('•') or line.startswith('*')):
+                    criterion = line.lstrip('-•* ').strip()
+                    if criterion:
+                        criteria.append(criterion)
+                elif line and not line.endswith(':'):
+                    # Handle lines without bullet points
+                    criteria.append(line)
+
+            self.status(f"   ✓ Generated {len(criteria)} acceptance criteria")
+            return criteria[:5]  # Limit to 5 criteria
+
+        except Exception as e:
+            self.status(f"   ⚠️ Failed to generate criteria: {e}")
+            # Return default criteria
+            return [
+                "Test completes without errors",
+                "Expected elements are visible",
+                "Actions produce expected results"
+            ]
+
     async def login(self, login_url: str, email: str, password: str) -> bool:
         """Perform login with better element detection."""
         self.status("🔐 Logging in...")
@@ -883,6 +1008,10 @@ Based on the screenshot and elements, what's the next action?"""
             'issues': self.issues,
             'screenshots': self.screenshots,
             'steps': self.steps,
+            'console_logs': self.console_logs,
+            'console_errors': self.console_errors,
+            'network_errors': self.network_errors,
+            'performance_metrics': self.performance_metrics,
             'session_dir': str(self.session_dir) if self.session_dir else None,
             'generated_at': datetime.now().isoformat()
         }

@@ -10,14 +10,16 @@ import asyncio
 import threading
 from datetime import datetime
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_from_directory, redirect
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, session
 from flask_socketio import SocketIO, emit
+from functools import wraps
 import yaml
 
 # Import our modules
 from crawler import AppCrawler
 from agent import AlphaTestAgent
 from report_generator import generate_report
+import auth
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'alphatest-secret-key-2024-change-in-production')
@@ -65,17 +67,142 @@ def is_api_key_configured():
     api_key = config.get('anthropic_api_key', '')
     return api_key and 'YOUR-API-KEY' not in api_key and len(api_key) > 20
 
+def login_required(f):
+    """Decorator to require login for routes."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            if request.is_json:
+                return jsonify({'success': False, 'error': 'Authentication required'}), 401
+            return redirect('/login')
+        return f(*args, **kwargs)
+    return decorated_function
+
+def get_current_user():
+    """Get the current logged-in user."""
+    if 'user_id' in session:
+        return auth.get_user_by_id(session['user_id'])
+    return None
+
+# ============================================
+# AUTHENTICATION ROUTES
+# ============================================
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    """User signup page."""
+    if request.method == 'POST':
+        data = request.json
+        email = data.get('email', '').strip()
+        password = data.get('password', '').strip()
+        name = data.get('name', '').strip()
+
+        if not email or not password:
+            return jsonify({'success': False, 'error': 'Email and password required'})
+
+        if len(password) < 8:
+            return jsonify({'success': False, 'error': 'Password must be at least 8 characters'})
+
+        result = auth.create_user(email, password, name)
+
+        if result['success']:
+            # Auto-login after signup
+            user = auth.get_user_by_email(email)
+            session['user_id'] = user['id']
+            session['user_email'] = user['email']
+            session['user_name'] = user['name']
+
+        return jsonify(result)
+
+    return render_template('signup.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login page."""
+    if request.method == 'POST':
+        data = request.json
+        email = data.get('email', '').strip()
+        password = data.get('password', '').strip()
+
+        user = auth.authenticate_user(email, password)
+
+        if user:
+            session['user_id'] = user['id']
+            session['user_email'] = user['email']
+            session['user_name'] = user['name']
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Invalid email or password'})
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """Logout the current user."""
+    session.clear()
+    return redirect('/login')
+
+@app.route('/api/user')
+@login_required
+def get_user():
+    """Get current user info."""
+    user = get_current_user()
+    return jsonify(user)
+
+@app.route('/api/generate-acceptance-criteria', methods=['POST'])
+@login_required
+def generate_acceptance_criteria():
+    """Generate acceptance criteria for a test command."""
+    data = request.json
+    test_command = data.get('test_command', '')
+    context = data.get('context', '')
+
+    if not test_command:
+        return jsonify({'success': False, 'error': 'Test command required'})
+
+    config = load_config()
+    api_key = config.get('anthropic_api_key')
+
+    if not api_key:
+        return jsonify({'success': False, 'error': 'API key not configured'})
+
+    # Create a temporary agent to generate criteria
+    def generate_criteria_sync():
+        async def generate():
+            agent = AlphaTestAgent(api_key=api_key)
+            criteria = await agent.generate_acceptance_criteria(test_command, context)
+            return criteria
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(generate())
+        loop.close()
+        return result
+
+    try:
+        criteria = generate_criteria_sync()
+        return jsonify({'success': True, 'criteria': criteria})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 # ============================================
 # ROUTES
 # ============================================
 
 @app.route('/')
+@login_required
 def dashboard():
     """Main dashboard - redirects to setup if needed."""
     if not is_api_key_configured():
         return redirect('/setup')
-    projects = load_projects()
-    return render_template('dashboard.html', projects=projects)
+
+    user = get_current_user()
+    all_projects = load_projects()
+
+    # Filter projects for current user
+    user_projects = {k: v for k, v in all_projects.items() if v.get('owner_id') == user['id']}
+
+    return render_template('dashboard.html', projects=user_projects, user=user)
 
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
@@ -106,13 +233,19 @@ def setup():
     return render_template('setup.html')
 
 @app.route('/project/new', methods=['GET', 'POST'])
+@login_required
 def new_project():
     """Create a new project."""
     if request.method == 'POST':
         data = request.json
+        user = get_current_user()
         projects = load_projects()
-        
+
         project_id = data['name'].lower().replace(' ', '-')
+        # Add timestamp to ensure uniqueness
+        import time
+        project_id = f"{project_id}-{int(time.time())}"
+
         projects[project_id] = {
             'id': project_id,
             'name': data['name'],
@@ -120,16 +253,23 @@ def new_project():
             'login_url': data.get('login_url', ''),
             'email': data.get('email', ''),
             'password': data.get('password', ''),
+            'owner_id': user['id'],
+            'owner_email': user['email'],
             'created_at': datetime.now().isoformat(),
             'crawl_data': None,
             'test_specs': [],
             'test_history': []
         }
-        
+
         save_projects(projects)
+
+        # Add project to user's project list
+        auth.add_project_to_user(user['id'], project_id)
+
         return jsonify({'success': True, 'project_id': project_id})
-    
-    return render_template('new_project.html')
+
+    user = get_current_user()
+    return render_template('new_project.html', user=user)
 
 @app.route('/project/<project_id>')
 def view_project(project_id):
