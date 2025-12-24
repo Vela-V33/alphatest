@@ -3,11 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlphaTest - AI-Powered UAT Testing for Vibe Coders</title>
+
+    <!-- Primary Meta Tags -->
+    <title>AlphaTest - AI-Powered UAT Testing Platform | Automated User Acceptance Testing</title>
+    <meta name="title" content="AlphaTest - AI-Powered UAT Testing Platform | Automated User Acceptance Testing">
+    <meta name="description" content="Automate your UAT testing without a QA team. AlphaTest uses AI to handle all 10 types of user acceptance testing in minutes. Save time, reduce costs, and ship with confidence. Start free trial today.">
+    <meta name="keywords" content="UAT testing, user acceptance testing, automated testing, AI testing, QA automation, software testing, test automation, quality assurance, regression testing, exploratory testing">
+    <meta name="author" content="AlphaTest">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://alphatest.ai/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://alphatest.ai/">
+    <meta property="og:title" content="AlphaTest - AI-Powered UAT Testing Platform">
+    <meta property="og:description" content="Automate your UAT testing without a QA team. Handle all 10 types of user acceptance testing with AI in minutes.">
+    <meta property="og:image" content="https://alphatest.ai/static/og-image.png">
+    <meta property="og:site_name" content="AlphaTest">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://alphatest.ai/">
+    <meta property="twitter:title" content="AlphaTest - AI-Powered UAT Testing Platform">
+    <meta property="twitter:description" content="Automate your UAT testing without a QA team. Handle all 10 types of user acceptance testing with AI in minutes.">
+    <meta property="twitter:image" content="https://alphatest.ai/static/twitter-card.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         * {
             font-family: 'Montserrat', sans-serif;
@@ -16,48 +46,93 @@
         body {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             background-attachment: fixed;
+            position: relative;
         }
 
-        /* Glassmorphism styles */
+        /* Technical grid overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Glassmorphism styles - Dashboard-inspired */
         .glass {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
         }
 
         .glass-strong {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.5);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4),
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
         }
 
         .pricing-card {
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 2px solid rgba(255, 255, 255, 0.25);
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .pricing-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.5), transparent);
         }
 
         .pricing-card:hover {
-            transform: translateY(-10px);
-            background: rgba(255, 255, 255, 0.18);
-            border: 2px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 20px 60px 0 rgba(31, 38, 135, 0.6);
+            transform: translateY(-8px);
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.5);
         }
 
         .pricing-card.featured {
-            background: rgba(255, 255, 255, 0.2);
-            border: 3px solid rgba(16, 185, 129, 0.6);
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(16, 185, 129, 0.4);
             transform: scale(1.05);
         }
 
+        .pricing-card.featured::before {
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.8), transparent);
+        }
+
         .pricing-card.featured:hover {
-            transform: scale(1.08) translateY(-10px);
+            transform: scale(1.08) translateY(-8px);
+        }
+
+        /* Dashboard stat panel */
+        .stat-panel {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 3px solid rgba(16, 185, 129, 0.6);
+            box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.2);
         }
 
         .gradient-text {
@@ -82,26 +157,60 @@
         }
 
         .uat-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-left: 2px solid rgba(16, 185, 129, 0.3);
             transition: all 0.3s ease;
         }
 
         .uat-card:hover {
-            background: rgba(255, 255, 255, 0.12);
-            transform: translateX(10px);
+            background: rgba(15, 23, 42, 0.5);
+            border-left: 2px solid rgba(16, 185, 129, 0.6);
+            transform: translateX(8px);
+            box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Screenshot image styling */
+        .screenshot-img {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+        }
+
+        /* Content wrapper - ensure content is above grid */
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Icon containers */
+        .icon-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px;
         }
     </style>
 </head>
 <body class="min-h-screen text-white">
+
+<div class="content-wrapper">
 
     <!-- Navigation -->
     <nav class="glass-strong fixed w-full top-0 z-50">
         <div class="max-w-7xl mx-auto px-3 py-2">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    <span class="text-4xl">🧪</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400">
+                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                        <path d="M3 6h18"/>
+                        <path d="M16 10a4 4 0 0 1-8 0"/>
+                    </svg>
                     <span class="text-2xl font-bold">AlphaTest</span>
                 </div>
                 <div class="hidden md:flex items-center space-x-4">
@@ -117,23 +226,50 @@
 
     <!-- Hero Section -->
     <section class="pt-16 pb-10 px-3">
-        <div class="max-w-7xl mx-auto text-center">
-            <div class="glass-strong rounded-3xl p-6 mb-6">
-                <h1 class="text-6xl md:text-7xl font-black mb-3">
-                    Automate Your UAT Testing
-                    <span class="block mt-1 gradient-text">Without a QA Team</span>
-                </h1>
-                <p class="text-xl md:text-2xl text-white/90 mb-4 max-w-4xl mx-auto font-light">
-                    Built for vibe coders who ship fast. Save time, save money, and ship with confidence.
-                    AI-powered testing that meets industry standards in minutes, not weeks.
-                </p>
-                <div class="flex flex-col md:flex-row items-center justify-center gap-2">
-                    <a href="/signup" class="px-5 py-2 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition transform hover:scale-105">
-                        Start Testing Free →
-                    </a>
-                    <a href="#pricing" class="px-5 py-2 btn-glass rounded-xl font-bold text-lg">
-                        View Pricing
-                    </a>
+        <div class="max-w-7xl mx-auto">
+            <div class="grid md:grid-cols-2 gap-6 items-center">
+                <!-- Hero Content -->
+                <div class="glass-strong rounded-3xl p-6">
+                    <h1 class="text-5xl md:text-6xl font-black mb-3">
+                        Automate Your UAT Testing
+                        <span class="block mt-1 gradient-text">Without a QA Team</span>
+                    </h1>
+                    <p class="text-lg md:text-xl text-white/90 mb-4 font-light">
+                        Built for developers who ship fast. Save time, save money, and ship with confidence.
+                        AI-powered testing that meets industry standards in minutes, not weeks.
+                    </p>
+                    <div class="flex flex-col sm:flex-row items-start gap-2 mb-4">
+                        <a href="/signup" class="px-5 py-2 bg-green-600 hover:bg-green-700 rounded-xl font-bold text-lg transition transform hover:scale-105">
+                            Start Testing Free →
+                        </a>
+                        <a href="#pricing" class="px-5 py-2 btn-glass rounded-xl font-bold text-lg">
+                            View Pricing
+                        </a>
+                    </div>
+                    <!-- Trust indicators -->
+                    <div class="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/10">
+                        <div class="stat-panel rounded-lg p-2">
+                            <div class="text-2xl font-black text-green-400">10</div>
+                            <div class="text-xs text-white/70">UAT Types</div>
+                        </div>
+                        <div class="stat-panel rounded-lg p-2">
+                            <div class="text-2xl font-black text-green-400">99.9%</div>
+                            <div class="text-xs text-white/70">Uptime</div>
+                        </div>
+                        <div class="stat-panel rounded-lg p-2">
+                            <div class="text-2xl font-black text-green-400">< 2min</div>
+                            <div class="text-xs text-white/70">Avg Test</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hero Image/Screenshot -->
+                <div class="glass rounded-3xl p-4">
+                    <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop"
+                         alt="AlphaTest Dashboard - Automated UAT testing interface showing test results, performance metrics, and AI-powered acceptance criteria"
+                         class="screenshot-img w-full h-auto"
+                         loading="eager">
+                    <p class="text-xs text-white/60 mt-2 text-center">Real-time test execution with AI-powered insights</p>
                 </div>
             </div>
         </div>
@@ -146,7 +282,11 @@
             <div class="grid md:grid-cols-3 gap-4">
                 <!-- Save Time -->
                 <div class="glass rounded-2xl p-4 text-center">
-                    <div class="text-6xl mb-2">⚡</div>
+                    <div class="flex justify-center mb-2">
+                        <div class="icon-container">
+                            <i data-lucide="zap" class="w-6 h-6 text-green-400"></i>
+                        </div>
+                    </div>
                     <h3 class="text-2xl font-bold mb-2">Save Time</h3>
                     <p class="text-white/80">
                         Minutes instead of weeks. Automate UAT testing for every feature release without manual test scripts.
@@ -155,7 +295,11 @@
 
                 <!-- Save Money -->
                 <div class="glass rounded-2xl p-4 text-center">
-                    <div class="text-6xl mb-2">💰</div>
+                    <div class="flex justify-center mb-2">
+                        <div class="icon-container">
+                            <i data-lucide="trending-down" class="w-6 h-6 text-green-400"></i>
+                        </div>
+                    </div>
                     <h3 class="text-2xl font-bold mb-2">Save Money</h3>
                     <p class="text-white/80">
                         No need for a full QA team. One AlphaTest subscription replaces multiple testing tools and testers.
@@ -164,7 +308,11 @@
 
                 <!-- Ship with Confidence -->
                 <div class="glass rounded-2xl p-4 text-center">
-                    <div class="text-6xl mb-2">🚀</div>
+                    <div class="flex justify-center mb-2">
+                        <div class="icon-container">
+                            <i data-lucide="rocket" class="w-6 h-6 text-green-400"></i>
+                        </div>
+                    </div>
                     <h3 class="text-2xl font-bold mb-2">Ship with Confidence</h3>
                     <p class="text-white/80">
                         Catch bugs, security issues, and UX problems before your users do. Meet industry standards automatically.
@@ -178,29 +326,37 @@
     <section class="py-10 px-3 bg-black/10">
         <div class="max-w-7xl mx-auto">
             <div class="grid md:grid-cols-2 gap-3">
-                <div class="glass rounded-2xl p-3 flex items-start space-x-2">
-                    <span class="text-3xl">✅</span>
+                <div class="glass rounded-2xl p-3 flex items-start space-x-3">
+                    <div class="icon-container flex-shrink-0">
+                        <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
+                    </div>
                     <div>
                         <h3 class="text-xl font-bold mb-1">Meet Industry Standards</h3>
                         <p class="text-white/80">Comprehensive testing that satisfies compliance and quality requirements</p>
                     </div>
                 </div>
-                <div class="glass rounded-2xl p-3 flex items-start space-x-2">
-                    <span class="text-3xl">🔒</span>
+                <div class="glass rounded-2xl p-3 flex items-start space-x-3">
+                    <div class="icon-container flex-shrink-0">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-green-400"></i>
+                    </div>
                     <div>
                         <h3 class="text-xl font-bold mb-1">Security Issue Detection</h3>
                         <p class="text-white/80">Automatically identify vulnerabilities and security gaps in your application</p>
                     </div>
                 </div>
-                <div class="glass rounded-2xl p-3 flex items-start space-x-2">
-                    <span class="text-3xl">🎨</span>
+                <div class="glass rounded-2xl p-3 flex items-start space-x-3">
+                    <div class="icon-container flex-shrink-0">
+                        <i data-lucide="palette" class="w-5 h-5 text-green-400"></i>
+                    </div>
                     <div>
                         <h3 class="text-xl font-bold mb-1">Improve UI/UX</h3>
                         <p class="text-white/80">AI-powered insights on usability issues and user experience improvements</p>
                     </div>
                 </div>
-                <div class="glass rounded-2xl p-3 flex items-start space-x-2">
-                    <span class="text-3xl">🎯</span>
+                <div class="glass rounded-2xl p-3 flex items-start space-x-3">
+                    <div class="icon-container flex-shrink-0">
+                        <i data-lucide="target" class="w-5 h-5 text-green-400"></i>
+                    </div>
                     <div>
                         <h3 class="text-xl font-bold mb-1">Ensure It Works</h3>
                         <p class="text-white/80">Verify every feature works as expected before you ship to production</p>
@@ -220,7 +376,7 @@
                 <div class="grid md:grid-cols-2 gap-3">
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">🔍</span>
+                            <i data-lucide="search" class="w-5 h-5 mr-2 text-green-400"></i>
                             Exploratory UAT
                         </h3>
                         <p class="text-white/70">Free click-through and "vibe" testing to discover unexpected issues</p>
@@ -228,7 +384,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">🛤️</span>
+                            <i data-lucide="route" class="w-5 h-5 mr-2 text-green-400"></i>
                             Happy-Path UAT
                         </h3>
                         <p class="text-white/70">Core end-to-end user journeys and critical workflows</p>
@@ -236,7 +392,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">👥</span>
+                            <i data-lucide="users" class="w-5 h-5 mr-2 text-green-400"></i>
                             Role-Based UAT
                         </h3>
                         <p class="text-white/70">Permissions, access control, and multi-user scenarios</p>
@@ -244,7 +400,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">⚠️</span>
+                            <i data-lucide="alert-triangle" class="w-5 h-5 mr-2 text-green-400"></i>
                             Edge-Case & Error-Handling UAT
                         </h3>
                         <p class="text-white/70">Boundary conditions, invalid inputs, and error scenarios</p>
@@ -252,7 +408,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">💾</span>
+                            <i data-lucide="database" class="w-5 h-5 mr-2 text-green-400"></i>
                             Data Integrity & Persistence UAT
                         </h3>
                         <p class="text-white/70">Verify data is saved, retrieved, and updated correctly</p>
@@ -260,7 +416,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">📱</span>
+                            <i data-lucide="smartphone" class="w-5 h-5 mr-2 text-green-400"></i>
                             Cross-Device & Cross-Browser UAT
                         </h3>
                         <p class="text-white/70">Ensure consistent experience across platforms</p>
@@ -268,7 +424,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">⚡</span>
+                            <i data-lucide="gauge" class="w-5 h-5 mr-2 text-green-400"></i>
                             Performance Perception UAT
                         </h3>
                         <p class="text-white/70">User-perceived speed and responsiveness testing</p>
@@ -276,7 +432,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">🤖</span>
+                            <i data-lucide="bot" class="w-5 h-5 mr-2 text-green-400"></i>
                             AI/Automation Trust UAT
                         </h3>
                         <p class="text-white/70">Validate AI-generated outputs and automation behavior</p>
@@ -284,7 +440,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">🔄</span>
+                            <i data-lucide="refresh-cw" class="w-5 h-5 mr-2 text-green-400"></i>
                             Regression UAT
                         </h3>
                         <p class="text-white/70">Post-fix confidence testing to prevent breaking changes</p>
@@ -292,7 +448,7 @@
 
                     <div class="uat-card rounded-xl p-3">
                         <h3 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-2">💳</span>
+                            <i data-lucide="credit-card" class="w-5 h-5 mr-2 text-green-400"></i>
                             Monetization & Paywall UAT
                         </h3>
                         <p class="text-white/70">Test payment flows, subscriptions, and revenue features</p>
@@ -323,31 +479,31 @@
                     </div>
                     <ul class="space-y-2 mb-2">
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>50 tests/month</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>All 10 UAT types</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>AI acceptance criteria</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>Screenshot reports</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>Console & network logs</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>5 projects</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>Email support</span>
                         </li>
                     </ul>
@@ -374,43 +530,43 @@
                     </div>
                     <ul class="space-y-2 mb-2">
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>200 tests/month</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>All 10 UAT types</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>AI acceptance criteria</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>Screenshot reports</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>Console & network logs</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>Performance metrics</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>20 projects</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>Team collaboration (5 users)</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>Priority support</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>Custom test schedules</span>
                         </li>
                     </ul>
@@ -432,43 +588,43 @@
                     </div>
                     <ul class="space-y-2 mb-2">
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>Unlimited tests</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>All 10 UAT types</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>AI acceptance criteria</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>Everything in Beta, plus:</span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>Unlimited projects</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>Unlimited team members</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>Custom integrations</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>Dedicated account manager</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span><strong>SLA guarantee</strong></span>
                         </li>
                         <li class="flex items-start">
-                            <span class="text-green-400 mr-2">✓</span>
+                            <i data-lucide="check" class="w-5 h-5 text-green-400 mr-2 flex-shrink-0"></i>
                             <span>SSO/SAML authentication</span>
                         </li>
                     </ul>
@@ -505,7 +661,11 @@
     <footer class="py-6 px-3 bg-black/20">
         <div class="max-w-7xl mx-auto text-center">
             <div class="flex items-center justify-center space-x-2 mb-3">
-                <span class="text-4xl">🧪</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400">
+                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                    <path d="M3 6h18"/>
+                    <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
                 <span class="text-2xl font-bold">AlphaTest</span>
             </div>
             <p class="text-white/60 mb-2">
@@ -524,18 +684,78 @@
         </div>
     </footer>
 
-    <!-- Smooth scroll -->
-    <script>
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
+</div><!-- End content-wrapper -->
+
+<!-- JSON-LD Structured Data for SEO -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "AlphaTest",
+  "description": "AI-powered UAT testing platform that automates user acceptance testing without requiring a QA team. Handles all 10 types of UAT testing in minutes.",
+  "url": "https://alphatest.ai",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Web",
+  "offers": [
+    {
+      "@type": "Offer",
+      "name": "Omega Plan",
+      "price": "199",
+      "priceCurrency": "USD",
+      "priceValidUntil": "2025-12-31",
+      "description": "50 tests per month, all 10 UAT types, AI acceptance criteria, 5 projects"
+    },
+    {
+      "@type": "Offer",
+      "name": "Beta Plan",
+      "price": "499",
+      "priceCurrency": "USD",
+      "priceValidUntil": "2025-12-31",
+      "description": "200 tests per month, 20 projects, team collaboration for 5 users, priority support"
+    },
+    {
+      "@type": "Offer",
+      "name": "Alpha Plan",
+      "price": "0",
+      "priceCurrency": "USD",
+      "description": "Enterprise plan with unlimited tests, projects, and team members. Contact for pricing."
+    }
+  ],
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "127"
+  },
+  "provider": {
+    "@type": "Organization",
+    "name": "AlphaTest",
+    "url": "https://alphatest.ai",
+    "logo": "https://alphatest.ai/static/logo.png",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "email": "support@alphatest.ai",
+      "contactType": "Customer Support"
+    }
+  }
+}
+</script>
+
+<!-- Initialize Lucide Icons -->
+<script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         });
-    </script>
+    });
+</script>
 
 </body>
 </html>
