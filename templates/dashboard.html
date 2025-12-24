@@ -3,10 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlphaTest - AI-Powered UAT Testing</title>
+    <title>AlphaTest - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
+    <style>
+        * {
+            font-family: 'Montserrat', sans-serif;
+        }
+    </style>
 </head>
 <body>
     <!-- Background Pattern -->
@@ -36,6 +41,12 @@
                             <span>+</span>
                             <span>New Project</span>
                         </a>
+                        {% if user %}
+                        <div class="flex items-center space-x-3">
+                            <span class="text-sm text-slate-400">{{ user.name or user.email }}</span>
+                            <a href="/logout" class="btn-secondary">Logout</a>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
