@@ -908,7 +908,27 @@
         });
 
         socket.on('test_screenshot', (data) => {
-            document.getElementById('livePreview').innerHTML = '<div class="text-center text-slate-400 text-sm p-4">📸 Screenshot captured</div>';
+            // Convert the file path to a URL
+            // Path format: /path/to/reports/<project_id>/<report_id>/screenshots/filename.png
+            // Extract relevant parts to build URL
+            const pathParts = data.path.split('/');
+            const screenshotsIndex = pathParts.lastIndexOf('screenshots');
+            if (screenshotsIndex >= 2) {
+                const projectId = pathParts[screenshotsIndex - 2];
+                const reportId = pathParts[screenshotsIndex - 1];
+                const filename = pathParts[screenshotsIndex + 1];
+                const imageUrl = `/reports/${projectId}/${reportId}/screenshots/${filename}`;
+
+                // Display the screenshot
+                document.getElementById('livePreview').innerHTML = `
+                    <img src="${imageUrl}"
+                         alt="Live Screenshot"
+                         class="w-full h-full object-contain rounded-lg"
+                         onerror="this.parentElement.innerHTML='<div class=\\'text-center text-red-400 text-sm p-4\\'>Failed to load screenshot</div>'">
+                `;
+            } else {
+                document.getElementById('livePreview').innerHTML = '<div class="text-center text-slate-400 text-sm p-4">📸 Screenshot captured</div>';
+            }
         });
 
         socket.on('test_complete', (data) => {

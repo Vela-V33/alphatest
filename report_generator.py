@@ -59,37 +59,54 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
     <title>AlphaTest Report - {project_name}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {{
-            --primary-500: #3b82f6;
-            --primary-600: #2563eb;
+            --primary-500: #10b981;
+            --primary-600: #059669;
             --bg-gradient-start: #0f172a;
             --bg-gradient-mid: #1e293b;
-            --bg-gradient-end: #0c4a6e;
-            --glass-bg: rgba(255, 255, 255, 0.08);
+            --bg-gradient-end: #0f172a;
+            --glass-bg: rgba(15, 23, 42, 0.6);
             --glass-border: rgba(255, 255, 255, 0.15);
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
-            --success: #22c55e;
+            --success: #10b981;
             --warning: #f59e0b;
             --error: #ef4444;
         }}
 
         body {{
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 100%);
             background-attachment: fixed;
             min-height: 100vh;
             color: var(--text-primary);
+            position: relative;
+        }}
+
+        /* Technical grid overlay */
+        body::before {{
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
         }}
 
         .bg-pattern {{
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background-image:
-                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.1) 0%, transparent 50%);
+                radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
             pointer-events: none;
             z-index: 0;
         }}
@@ -104,7 +121,7 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
         }}
 
         .header-glass {{
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(14, 165, 233, 0.15) 100%);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -118,13 +135,13 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             font-weight: 600;
             transition: all 0.3s ease;
             border: none;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
             cursor: pointer;
         }}
 
         .btn-primary:hover {{
             transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
         }}
 
         .screenshot-img {{
@@ -263,7 +280,7 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
                             <span class="text-3xl">🧪</span>
                             <h1 class="text-2xl font-bold text-white">AlphaTest Report</h1>
                         </div>
-                        <p class="text-blue-200 font-medium">{project_name}</p>
+                        <p class="text-green-300 font-medium">{project_name}</p>
                         <p class="text-slate-400 text-sm">{project_url}</p>
                     </div>
                     <div class="text-right">

@@ -204,14 +204,50 @@ class AlphaTestAgent:
         except:
             pass
 
-        # Additional wait to ensure complete rendering (critical for headless)
-        await asyncio.sleep(1.0)
-
-        # Force a repaint by evaluating JS
+        # Wait for fonts to load (prevents text rendering issues)
         try:
-            await self.page.evaluate('() => { document.body.offsetHeight; }')
+            await self.page.evaluate('() => document.fonts.ready')
         except:
             pass
+
+        # Wait for images to load
+        try:
+            await self.page.evaluate('''
+                () => {
+                    return Promise.all(
+                        Array.from(document.images)
+                            .filter(img => !img.complete)
+                            .map(img => new Promise(resolve => {
+                                img.onload = img.onerror = resolve;
+                            }))
+                    );
+                }
+            ''')
+        except:
+            pass
+
+        # Additional wait to ensure complete rendering (critical for headless)
+        await asyncio.sleep(1.5)
+
+        # Force multiple repaints to ensure rendering is complete
+        try:
+            await self.page.evaluate('''
+                () => {
+                    // Force reflow
+                    document.body.offsetHeight;
+                    // Force repaint
+                    document.body.style.display = 'none';
+                    document.body.offsetHeight;
+                    document.body.style.display = '';
+                    // Trigger another reflow
+                    document.body.offsetHeight;
+                }
+            ''')
+        except:
+            pass
+
+        # Final small wait after forced repaint
+        await asyncio.sleep(0.3)
 
         # Generate filename
         safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)[:40]
@@ -222,10 +258,11 @@ class AlphaTestAgent:
             # Take screenshot with explicit options for headless mode
             await self.page.screenshot(
                 path=str(filepath),
-                full_page=False,  # Changed to viewport only for faster, more reliable capture
+                full_page=False,  # Viewport only for faster, more reliable capture
                 type='png',
                 animations='disabled',
-                caret='hide'
+                caret='hide',
+                scale='css'  # Use CSS pixels for consistent rendering
             )
 
             # Verify file was created and has content
@@ -245,7 +282,7 @@ class AlphaTestAgent:
                 return str(filepath)
             else:
                 self.status(f"   ⚠️ Screenshot may be empty: {name}")
-                
+
         except Exception as e:
             self.status(f"   ⚠️ Screenshot failed: {e}")
 

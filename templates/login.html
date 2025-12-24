@@ -6,25 +6,91 @@
     <title>Login - AlphaTest</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <style>
-        * { font-family: 'Montserrat', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        * {
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background-attachment: fixed;
+            position: relative;
+        }
+
+        /* Technical grid overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4),
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .input-glass {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .input-glass:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .input-glass::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+        }
     </style>
 </head>
-<body class="min-h-screen gradient-bg flex items-center justify-center p-6">
-    <div class="max-w-md w-full">
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="content-wrapper max-w-md w-full">
         <!-- Login Card -->
-        <div class="bg-white rounded-2xl shadow-2xl p-8">
+        <div class="glass rounded-3xl p-8">
             <div class="text-center mb-8">
-                <div class="text-6xl mb-4">🧪</div>
-                <h1 class="text-2xl font-bold text-gray-800">Welcome Back!</h1>
-                <p class="text-gray-500 mt-2">Sign in to continue testing</p>
+                <!-- Logo -->
+                <div class="flex justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400">
+                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                        <path d="M3 6h18"/>
+                        <path d="M16 10a4 4 0 0 1-8 0"/>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-black text-white mb-2">Welcome Back</h1>
+                <p class="text-white/60">Sign in to continue testing</p>
             </div>
 
             <!-- Login Form -->
-            <form id="loginForm" class="space-y-6">
+            <form id="loginForm" class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <label class="block text-sm font-semibold text-white/90 mb-2 flex items-center">
+                        <i data-lucide="mail" class="w-4 h-4 mr-2 text-green-400"></i>
                         Email
                     </label>
                     <input
@@ -32,12 +98,13 @@
                         id="email"
                         placeholder="you@example.com"
                         required
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        class="w-full px-4 py-3 input-glass rounded-xl text-sm transition"
                     >
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <label class="block text-sm font-semibold text-white/90 mb-2 flex items-center">
+                        <i data-lucide="lock" class="w-4 h-4 mr-2 text-green-400"></i>
                         Password
                     </label>
                     <input
@@ -45,16 +112,16 @@
                         id="password"
                         placeholder="Enter your password"
                         required
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        class="w-full px-4 py-3 input-glass rounded-xl text-sm transition"
                     >
                 </div>
 
-                <div id="errorMsg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"></div>
+                <div id="errorMsg" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm"></div>
 
                 <button
                     type="submit"
                     id="submitBtn"
-                    class="w-full py-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
+                    class="w-full py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition transform hover:scale-105"
                 >
                     Sign In
                 </button>
@@ -64,31 +131,41 @@
             <div class="mt-6">
                 <div class="relative">
                     <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-300"></div>
+                        <div class="w-full border-t border-white/10"></div>
                     </div>
                     <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-white text-gray-500">New to AlphaTest?</span>
+                        <span class="px-3 bg-[rgba(15,23,42,0.6)] text-white/60">New to AlphaTest?</span>
                     </div>
                 </div>
             </div>
 
             <!-- Sign Up Link -->
             <div class="mt-6">
-                <a href="/signup" class="block w-full py-3 text-center border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition">
+                <a href="/signup" class="block w-full py-3 text-center border border-white/20 text-white font-semibold rounded-xl hover:bg-white/5 transition">
                     Create an Account
+                </a>
+            </div>
+
+            <!-- Back to Home -->
+            <div class="mt-4">
+                <a href="/" class="block text-center text-sm text-white/60 hover:text-white/90 transition">
+                    ← Back to Home
                 </a>
             </div>
         </div>
 
         <!-- Footer -->
-        <div class="text-center mt-8">
-            <p class="text-white text-sm">
+        <div class="text-center mt-6">
+            <p class="text-white/60 text-sm">
                 AI-powered UAT testing for modern applications
             </p>
         </div>
     </div>
 
     <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -104,7 +181,8 @@
 
             // Disable button
             btn.disabled = true;
-            btn.textContent = 'Signing in...';
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin inline"></i> Signing in...';
+            lucide.createIcons();
 
             try {
                 const response = await fetch('/login', {
@@ -116,7 +194,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    window.location.href = '/';
+                    btn.innerHTML = '<i data-lucide="check" class="w-5 h-5 inline mr-2"></i> Success! Redirecting...';
+                    lucide.createIcons();
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 500);
                 } else {
                     errorMsg.textContent = data.error || 'Invalid credentials';
                     errorMsg.classList.remove('hidden');
