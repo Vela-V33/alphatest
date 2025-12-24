@@ -277,7 +277,7 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center space-x-3 mb-2">
-                            <span class="text-3xl">🧪</span>
+                            <img src="/static/images/alphatest-logo.svg" alt="AlphaTest Logo" style="width: 48px; height: 48px;">
                             <h1 class="text-2xl font-bold text-white">AlphaTest Report</h1>
                         </div>
                         <p class="text-green-300 font-medium">{project_name}</p>
