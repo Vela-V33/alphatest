@@ -1,1 +1,1 @@
-web: python server.py
+web: gunicorn main:app --bind :$PORT --workers 1 --threads 8 --timeout 3600
