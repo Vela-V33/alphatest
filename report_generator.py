@@ -15,6 +15,23 @@ import xml.etree.ElementTree as ET
 def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
     """Generate a comprehensive HTML report with glassmorphic design."""
 
+    print(f"\n[DEBUG] ===== REPORT GENERATION STARTED =====")
+    print(f"[DEBUG] Data keys: {list(data.keys())}")
+    print(f"[DEBUG] Results count: {len(data.get('results', []))}")
+    print(f"[DEBUG] Screenshots count: {len(data.get('screenshots', []))}")
+
+    # Check first result structure
+    results = data.get('results', [])
+    if results:
+        first_result = results[0]
+        print(f"[DEBUG] First result keys: {list(first_result.keys())}")
+        print(f"[DEBUG] First result has steps: {'steps' in first_result}")
+        if 'steps' in first_result:
+            steps = first_result.get('steps', [])
+            print(f"[DEBUG] First result steps count: {len(steps)}")
+            if steps:
+                print(f"[DEBUG] First step structure: {list(steps[0].keys()) if steps else 'No steps'}")
+
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -31,6 +48,7 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
     for ss in data.get('screenshots', []):
         src_path = ss.get('path', '')
         if not src_path:
+            print(f"[WARNING] Screenshot entry has no path: {ss}")
             continue
 
         src = Path(src_path)
@@ -38,15 +56,20 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             dst = screenshots_dir / src.name
             try:
                 shutil.copy(src, dst)
-                screenshot_lookup[src_path] = src.name
+                # Store multiple path variations to ensure matching
+                screenshot_lookup[src_path] = src.name  # Original path
+                screenshot_lookup[str(src)] = src.name  # Path object as string
+                screenshot_lookup[str(src.resolve())] = src.name  # Absolute resolved path
                 print(f"[DEBUG] ✓ Copied screenshot: {src.name}")
+                print(f"[DEBUG]   - Registered paths: {src_path}, {str(src)}")
             except Exception as e:
                 print(f"[WARNING] Failed to copy screenshot {src}: {e}")
         else:
-            print(f"[WARNING] Screenshot file not found: {src}")
+            print(f"[WARNING] Screenshot file not found: {src} (from path: {src_path})")
 
     print(f"[DEBUG] Total screenshots copied: {len(screenshot_lookup)}")
-    print(f"[DEBUG] Screenshot lookup keys: {list(screenshot_lookup.keys())[:3] if screenshot_lookup else 'None'}")
+    print(f"[DEBUG] Screenshot lookup keys (first 3): {list(screenshot_lookup.keys())[:3] if screenshot_lookup else 'None'}")
+    print(f"[DEBUG] Screenshot lookup values (first 3): {list(screenshot_lookup.values())[:3] if screenshot_lookup else 'None'}")
     print(f"[DEBUG] ===== END SCREENSHOT PROCESSING =====\n")
 
     # Calculate summary
@@ -712,6 +735,13 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
         print(f"[DEBUG]   - Status: {status}")
         print(f"[DEBUG]   - Steps: {len(steps)}")
 
+        # Debug: Check if steps have screenshot data
+        if steps:
+            first_step = steps[0]
+            print(f"[DEBUG]   - First step keys: {list(first_step.keys())}")
+            print(f"[DEBUG]   - First step has screenshot_before: {'screenshot_before' in first_step}")
+            print(f"[DEBUG]   - First step has screenshot_after: {'screenshot_after' in first_step}")
+
         html += f"""
         <section class="glass-card mb-8 overflow-hidden">
             <div class="p-6 border-b border-white/10">
@@ -746,23 +776,53 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
             before_shot = step.get('screenshot_before', '')
             after_shot = step.get('screenshot_after', '')
 
-            before_filename = screenshot_lookup.get(before_shot, '')
-            after_filename = screenshot_lookup.get(after_shot, '')
+            # Try multiple path formats for screenshot lookup
+            before_filename = ''
+            if before_shot:
+                before_filename = screenshot_lookup.get(before_shot, '')
+                if not before_filename:
+                    # Try as Path object string
+                    before_filename = screenshot_lookup.get(str(Path(before_shot)), '')
+                if not before_filename:
+                    # Try resolved absolute path
+                    try:
+                        before_filename = screenshot_lookup.get(str(Path(before_shot).resolve()), '')
+                    except:
+                        pass
+
+            after_filename = ''
+            if after_shot:
+                after_filename = screenshot_lookup.get(after_shot, '')
+                if not after_filename:
+                    # Try as Path object string
+                    after_filename = screenshot_lookup.get(str(Path(after_shot)), '')
+                if not after_filename:
+                    # Try resolved absolute path
+                    try:
+                        after_filename = screenshot_lookup.get(str(Path(after_shot).resolve()), '')
+                    except:
+                        pass
 
             # Debug logging
             has_before = bool(before_shot)
             has_after = bool(after_shot)
             print(f"[DEBUG]   Step {step_num}: before={has_before}, after={has_after}")
 
-            if before_shot and not before_filename:
-                print(f"[WARNING]   - Before screenshot not found in lookup: {before_shot}")
-            elif before_filename:
-                print(f"[DEBUG]   - Before screenshot: {before_filename}")
+            if before_shot:
+                print(f"[DEBUG]     - Before path from step: {before_shot}")
+                if not before_filename:
+                    print(f"[WARNING]     - Before screenshot NOT FOUND in lookup!")
+                    print(f"[WARNING]     - Available paths: {list(screenshot_lookup.keys())[:2]}")
+                else:
+                    print(f"[DEBUG]     - Before filename resolved: {before_filename}")
 
-            if after_shot and not after_filename:
-                print(f"[WARNING]   - After screenshot not found in lookup: {after_shot}")
-            elif after_filename:
-                print(f"[DEBUG]   - After screenshot: {after_filename}")
+            if after_shot:
+                print(f"[DEBUG]     - After path from step: {after_shot}")
+                if not after_filename:
+                    print(f"[WARNING]     - After screenshot NOT FOUND in lookup!")
+                    print(f"[WARNING]     - Available paths: {list(screenshot_lookup.keys())[:2]}")
+                else:
+                    print(f"[DEBUG]     - After filename resolved: {after_filename}")
 
             step_status = 'success' if success else 'failed'
             action_type = action.get('type', 'analyze')
