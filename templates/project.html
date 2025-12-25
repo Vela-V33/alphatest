@@ -932,8 +932,28 @@
         });
 
         socket.on('test_complete', (data) => {
-            addChatMessage('✅ Test completed!', 'bot');
-            addChatMessage('📊 View report: ' + data.report_url, 'bot');
+            // Check if test needs continuation
+            if (data.status === 'needs_continuation') {
+                addChatMessage('⏸️ Test paused at max steps', 'bot');
+                addChatMessage('📊 View progress: ' + data.report_url, 'bot');
+
+                // Add continue button
+                const chatMessages = document.getElementById('chatMessages');
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'message bot-message flex justify-start mb-3';
+                btnContainer.innerHTML = `
+                    <div class="bg-slate-700/30 backdrop-blur-sm px-4 py-2 rounded-2xl max-w-[80%]">
+                        <button onclick="continueTest()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-semibold">
+                            ▶️ Continue Testing (25 more steps)
+                        </button>
+                    </div>
+                `;
+                chatMessages.appendChild(btnContainer);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } else {
+                addChatMessage('✅ Test completed!', 'bot');
+                addChatMessage('📊 View report: ' + data.report_url, 'bot');
+            }
 
             document.getElementById('sendBtn').disabled = false;
             document.getElementById('sendBtn').innerHTML = '▶ Run';
@@ -941,6 +961,14 @@
             document.getElementById('testStatus').innerHTML =
                 '<a href="' + data.report_url + '" class="text-blue-400 hover:text-blue-300 transition">View Full Report →</a>';
         });
+
+        // Function to continue test
+        function continueTest() {
+            const userInput = document.getElementById('userInput');
+            const currentCommand = userInput.value || userInput.placeholder || 'Continue testing';
+            userInput.value = currentCommand;
+            document.getElementById('sendBtn').click();
+        }
 
         socket.on('test_error', (data) => {
             addChatMessage('❌ Error: ' + data.message, 'bot');

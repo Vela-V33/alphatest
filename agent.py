@@ -816,21 +816,45 @@ Criteria:"""
 
             elif action_type == 'type':
                 text = action.get('text', '')
-                elem = await self.find_element_robust(selector)
+                elem = await self.find_element_robust(selector, text_hint)
                 if elem:
                     await elem.scroll_into_view_if_needed()
                     await asyncio.sleep(0.2)
+
                     # Clear and type with proper handling
                     try:
                         await elem.fill('')
+                        await asyncio.sleep(0.1)
                         await elem.fill(text)
-                    except:
+                        await asyncio.sleep(0.2)
+
+                        # VERIFY the value was actually set
+                        actual_value = await elem.input_value()
+                        if actual_value == text:
+                            result = {'success': True, 'message': f'Typed and verified "{text[:30]}..." into {selector}', 'action': action}
+                        else:
+                            # Value didn't stick, try alternative method
+                            await elem.click()
+                            await elem.press('Control+a')
+                            await elem.type(text)
+                            await asyncio.sleep(0.2)
+
+                            # Verify again
+                            actual_value = await elem.input_value()
+                            if actual_value == text:
+                                result = {'success': True, 'message': f'Typed and verified "{text[:30]}..." (retry method)', 'action': action}
+                            else:
+                                result = {'success': False, 'message': f'Failed to set value. Expected: "{text}", Got: "{actual_value}"', 'action': action}
+                    except Exception as e:
                         # Fallback: click and type
-                        await elem.click()
-                        await self.page.keyboard.type(text)
-                    result = {'success': True, 'message': f'Typed "{text[:30]}..." into {selector}', 'action': action}
+                        try:
+                            await elem.click()
+                            await self.page.keyboard.type(text, delay=50)
+                            result = {'success': True, 'message': f'Typed "{text[:30]}..." using keyboard', 'action': action}
+                        except Exception as e2:
+                            result = {'success': False, 'message': f'Failed to type: {str(e2)}', 'action': action}
                 else:
-                    result = {'success': False, 'message': f'Element not found: {selector}', 'action': action}
+                    result = {'success': False, 'message': f'Input element not found: {selector}', 'action': action}
 
             elif action_type == 'select':
                 value = action.get('value', '')
@@ -941,53 +965,82 @@ Criteria:"""
             for c in acceptance_criteria:
                 criteria_str += f"- {c.get('description', c)}\n"
         
-        system_prompt = """You are AlphaTest, an expert AI testing agent for web applications.
+        system_prompt = """You are an autonomous UAT and QA testing agent. Your role is to behave like a real human user interacting with a live application through its user interface.
 
-Your job:
-1. Look at the current page screenshot and available elements
-2. Decide what action to take to complete the user's task
-3. Check if acceptance criteria are met
-4. Report ONLY issues you actually observe on THIS page
+CORE BEHAVIOR - ACT LIKE A HUMAN QA TESTER:
+1. Visually perceive the UI and identify ALL interactive elements (buttons, links, dropdowns, inputs, toggles, modals, menus)
+2. Interact EXACTLY as a human would: clicking, typing, selecting, scrolling, navigating
+3. Respect page load times, animations, and UI state changes before taking next action
+4. Make intelligent decisions based on what you see and the test specification
+5. Log ALL issues, broken elements, UX problems, and improvement opportunities
 
-CRITICAL RULES FOR RELIABLE ACTIONS:
-1. PREFER these selector types (in order):
-   - ID selectors: #loginBtn, #submitForm
-   - Name attributes: [name="email"], [name="password"]
-   - Unique classes: .submit-button, .primary-btn
-   - Text content: button:has-text('Submit'), a:has-text('Login')
+TESTING CAPABILITIES:
+- Navigate through multi-step workflows and menus
+- Open and use dropdowns, pickers, checkboxes, radio buttons
+- Fill forms with realistic fictional data (names, emails, addresses, etc.)
+- Save, submit, edit, delete records
+- Trigger validations and handle errors gracefully
+- Login/logout when required
+- Test happy paths, edge cases, and negative scenarios
 
-2. AVOID vague selectors like: button, input, .btn (too generic)
+DECISION-MAKING:
+- Choose the most intuitive path a real user would take
+- If an action fails, try alternative selectors or approaches
+- Wait when loading indicators are present
+- Scroll to reveal more content if needed
+- Adapt to UI changes without failing
 
-3. For BUTTONS and LINKS:
-   - Include text_hint with the visible button text
-   - Example: {"type": "click", "selector": "#submit", "text_hint": "Submit"}
+CRITICAL - SELECTOR RULES:
+1. PREFER (in order):
+   - ID: #loginBtn, #email-input
+   - Name: [name="email"], [name="password"]
+   - Unique class: .submit-btn, .primary-button
+   - Text: button:has-text('Login'), a:has-text('Sign Up')
 
-4. For DROPDOWNS/SELECTS:
-   - Native select: use type="select" with value
-   - Custom dropdown: first click to open, then click option text
+2. AVOID vague selectors: button, input, .btn
 
-5. NAVIGATION TIPS:
-   - If stuck, try scrolling down to find more elements
-   - If a click doesn't work, try a different selector for same element
-   - Look for menu items, sidebar links, navigation bars
+3. BUTTONS/LINKS: Always include text_hint with visible text
+   Example: {"type": "click", "selector": "#submit", "text_hint": "Submit Form"}
 
-6. ONLY report issues you can SEE in the current screenshot
-7. When task is complete OR acceptance criteria met, set completed=true
+4. DROPDOWNS:
+   - Native <select>: {"type": "select", "selector": "#country", "value": "USA"}
+   - Custom dropdown: First click to open, then click option by text
+
+5. FORMS: Use realistic test data from context or generate appropriate values
+
+ISSUE LOGGING - BE THOROUGH:
+Report ALL observations:
+- Broken buttons (not clickable, no response)
+- Non-responsive elements
+- Layout/alignment issues
+- Missing labels or unclear UI
+- Validation errors
+- Performance problems
+- Accessibility issues
+- Confusing workflows
+- Missing features
+
+CONSTRAINTS:
+- Do NOT assume backend success unless UI confirms it
+- Do NOT hallucinate outcomes
+- Do NOT bypass UI via APIs
+- Report uncertainty clearly
 
 Return ONLY valid JSON:
 {
-    "thinking": "What I see on screen and my specific plan",
+    "thinking": "What I see, my analysis, and my human-like decision",
     "action": {
         "type": "click|type|select|navigate|wait|scroll|press|hover|back|done",
-        "selector": "Specific CSS selector from elements list",
-        "text": "text to type (for type action)",
-        "text_hint": "visible button/link text (helps find element)",
-        "value": "value to select (for select action)",
+        "selector": "Specific CSS selector",
+        "text": "text to type (for type action) - use realistic data",
+        "text_hint": "visible text (for click action)",
+        "value": "value (for select action)",
         "key": "key name (for press action)",
-        "direction": "up|down (for scroll action)"
+        "direction": "up|down (for scroll)"
     },
-    "observed_issues": ["Only real issues I can see right now"],
-    "criteria_status": "Which acceptance criteria appear to be met",
+    "observed_issues": ["List EVERY issue you can see: broken elements, UX problems, bugs, confusing UI, missing features, layout issues"],
+    "suggestions": ["Improvement recommendations based on what you observe"],
+    "criteria_status": "Which acceptance criteria are met",
     "completed": false
 }"""
 
@@ -1007,16 +1060,26 @@ Return ONLY valid JSON:
                 el_str += f" options={[o['text'] for o in el['options'][:5]]}"
             elements_summary.append(el_str)
 
+        # Build conversation memory from recent steps
+        recent_actions = ""
+        if hasattr(self, 'steps') and len(self.steps) > 0:
+            recent_actions = "\n\nRECENT ACTIONS (what you tried already):\n"
+            for i, step in enumerate(self.steps[-5:]):  # Last 5 steps
+                action = step.get('action', {})
+                result = step.get('result', {})
+                status = "✓" if result.get('success') else "✗"
+                recent_actions += f"{i+1}. {status} {action.get('type', 'unknown')} on {action.get('selector', 'N/A')} - {result.get('message', 'N/A')}\n"
+
         user_message = f"""TASK: {task}
 {criteria_str}
 
 CURRENT PAGE: {context['url']}
 TITLE: {context['title']}
-
-AVAILABLE ELEMENTS:
+{recent_actions}
+AVAILABLE ELEMENTS (index, tag, attributes, text):
 {chr(10).join(elements_summary)}
 
-Based on the screenshot and elements, what's the next action?"""
+As a human QA tester, analyze the screenshot and decide the next action. Be thorough in logging issues and suggesting improvements."""
 
         try:
             response = self.client.messages.create(
@@ -1050,7 +1113,7 @@ Based on the screenshot and elements, what's the next action?"""
                     "completed": False
                 }
             
-            # Only add issues that were actually observed
+            # Add observed issues
             if result.get('observed_issues'):
                 for issue in result['observed_issues']:
                     if issue and len(issue) > 5:  # Filter out empty/tiny issues
@@ -1058,9 +1121,20 @@ Based on the screenshot and elements, what's the next action?"""
                             'type': 'observed_issue',
                             'message': issue,
                             'url': context['url'],
-                            'severity': 'medium'
+                            'severity': 'medium',
+                            'timestamp': datetime.now().isoformat()
                         })
-            
+
+            # Add suggestions for improvements
+            if result.get('suggestions'):
+                for suggestion in result['suggestions']:
+                    if suggestion and len(suggestion) > 5:
+                        self.suggestions.append({
+                            'message': suggestion,
+                            'url': context['url'],
+                            'timestamp': datetime.now().isoformat()
+                        })
+
             return result
             
         except Exception as e:
@@ -1138,14 +1212,14 @@ Based on the screenshot and elements, what's the next action?"""
 
             # Execute action
             if action.get('type') and action['type'] not in ['done', 'unknown']:
-                # Check if this action was already performed to prevent loops
                 action_signature = f"{action.get('type')}:{action.get('selector', '')}:{action.get('text', '')}"
+
+                # Only skip if this EXACT action succeeded before (prevents infinite loops)
+                # Failed actions can be retried with different selectors
                 if action_signature in self.completed_actions:
-                    self.status(f"   ⚠️  Skipping duplicate action")
-                    step_data['result'] = {'success': False, 'message': 'Duplicate action skipped', 'action': action}
-                    result['steps'].append(step_data)
-                    step_num += 1
-                    continue
+                    # Allow retry if it's been more than 3 steps since this action
+                    if len(result['steps']) - self.completed_actions.count(action_signature) < 3:
+                        self.status(f"   ⚠️  This exact action already succeeded, trying anyway...")
 
                 # Screenshot before action
                 before_shot = await self.screenshot(
@@ -1158,12 +1232,20 @@ Based on the screenshot and elements, what's the next action?"""
                 action_result = await self.execute_action(action)
                 step_data['result'] = action_result
 
-                # Track successful actions to prevent duplicates
+                # Only track SUCCESSFUL actions to prevent infinite loops
+                # Failed actions can be retried with different approaches
                 if action_result['success']:
                     self.completed_actions.append(action_signature)
                     self.status(f"   ✓ {action_result['message']}")
                 else:
                     self.status(f"   ✗ {action_result['message']}")
+                    # Log failed action as an issue for reporting
+                    self.issues.append({
+                        'type': 'action_failed',
+                        'message': f"Failed to {action.get('type')} on {action.get('selector', 'unknown')}: {action_result['message']}",
+                        'severity': 'low',
+                        'step': step_num + 1
+                    })
 
                 # Screenshot after action (faster wait)
                 await asyncio.sleep(0.3)
@@ -1174,6 +1256,8 @@ Based on the screenshot and elements, what's the next action?"""
                 step_data['screenshot_after'] = after_shot
 
             result['steps'].append(step_data)
+            # Also add to self.steps for conversation memory
+            self.steps.append(step_data)
             step_num += 1
 
         # Check if we hit max steps without completing

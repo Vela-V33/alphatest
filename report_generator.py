@@ -42,9 +42,10 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
 
     issues = data.get('issues', [])
     screenshots = data.get('screenshots', [])
+    suggestions = data.get('suggestions', [])
 
     # Filter to only relevant issues (observed during test)
-    relevant_issues = [i for i in issues if i.get('type') in ['observed_issue', 'action_error', 'dropdown_error']]
+    relevant_issues = [i for i in issues if i.get('type') in ['observed_issue', 'action_error', 'dropdown_error', 'action_failed']]
 
     # Generate HTML
     project_name = project.get('name', 'Test Report') if project else 'Test Report'
@@ -361,6 +362,9 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             <!-- Issues Found -->
             {generate_issues_html(relevant_issues)}
 
+            <!-- Improvement Suggestions -->
+            {generate_suggestions_html(suggestions)}
+
             <!-- All Screenshots Gallery -->
             {generate_screenshots_gallery(screenshots, screenshot_lookup)}
         </main>
@@ -666,6 +670,44 @@ def generate_issues_html(issues: List[Dict]) -> str:
                     {f'<p class="text-slate-500 text-sm mt-1 truncate">On: {url}</p>' if url else ''}
                 </div>
                 <span class="text-xs text-slate-500 uppercase flex-shrink-0">{severity}</span>
+            </div>
+        </div>
+        """
+
+    html += """
+        </div>
+    </section>
+    """
+
+    return html
+
+
+def generate_suggestions_html(suggestions: List[Dict]) -> str:
+    """Generate HTML for improvement suggestions section."""
+    if not suggestions:
+        return ""
+
+    html = """
+    <section class="glass-card p-6 mb-8">
+        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+            <span>💡</span>
+            <span>Improvement Suggestions</span>
+        </h2>
+        <div class="space-y-3">
+    """
+
+    for suggestion in suggestions:
+        message = suggestion.get('message', '')
+        url = suggestion.get('url', '')
+
+        html += f"""
+        <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <div class="flex items-start space-x-3">
+                <span class="text-xl flex-shrink-0">💡</span>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-blue-400">{message}</p>
+                    {f'<p class="text-slate-500 text-sm mt-1 truncate">On: {url}</p>' if url else ''}
+                </div>
             </div>
         </div>
         """
