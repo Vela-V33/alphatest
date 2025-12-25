@@ -160,6 +160,12 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             border-radius: 0 8px 8px 0;
             padding: 1rem;
             margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }}
+
+        .step-card:hover {{
+            background: rgba(255, 255, 255, 0.05);
         }}
 
         .step-card.success {{
@@ -168,6 +174,34 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
 
         .step-card.failed {{
             border-left-color: var(--error);
+        }}
+
+        .step-screenshots {{
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }}
+
+        .step-screenshots.active {{
+            display: grid;
+        }}
+
+        .step-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+
+        .expand-icon {{
+            transition: transform 0.3s;
+            font-size: 1.2em;
+        }}
+
+        .expanded .expand-icon {{
+            transform: rotate(90deg);
         }}
 
         .modal {{
@@ -355,6 +389,19 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             document.getElementById('modal').classList.remove('active');
         }}
 
+        function toggleStep(stepId) {{
+            const stepEl = document.getElementById(stepId);
+            const card = stepEl.parentElement;
+
+            if (stepEl.classList.contains('active')) {{
+                stepEl.classList.remove('active');
+                card.classList.remove('expanded');
+            }} else {{
+                stepEl.classList.add('active');
+                card.classList.add('expanded');
+            }}
+        }}
+
         document.addEventListener('keydown', (e) => {{
             if (e.key === 'Escape') closeModal();
         }});
@@ -469,7 +516,7 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
                 <div class="space-y-2">
         """
 
-        for step in steps:
+        for step_idx, step in enumerate(steps):
             step_num = step.get('step', 0)
             thinking = step.get('thinking', '')
             action = step.get('action', {})
@@ -487,9 +534,13 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
             action_type = action.get('type', 'analyze')
             action_desc = step_result.get('message', '')
 
+            step_id = f"step-{test_idx}-{step_idx}"
+            has_screenshots = bool(before_filename or after_filename)
+
             html += f"""
-                    <div class="step-card {step_status}">
-                        <div class="flex items-start justify-between">
+                    <div class="step-card {step_status} {'expanded' if not has_screenshots else ''}"
+                         onclick="{'toggleStep(\\'' + step_id + '\\')' if has_screenshots else 'return false'}">
+                        <div class="step-header">
                             <div class="flex items-start space-x-3 flex-1">
                                 <div class="timeline-dot {step_status} mt-1.5"></div>
                                 <div class="flex-1">
@@ -501,33 +552,38 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
                                     {f'<p class="text-slate-500 text-xs mt-1">{action_desc}</p>' if action_desc else ''}
                                 </div>
                             </div>
+                            {f'<span class="expand-icon text-green-400">►</span>' if has_screenshots else ''}
+                        </div>
             """
 
-            # Add screenshot thumbnails if available
-            if before_filename or after_filename:
-                html += '<div class="flex space-x-2 ml-4 flex-shrink-0">'
+            # Add expandable screenshots section
+            if has_screenshots:
+                html += f'''
+                        <div class="step-screenshots" id="{step_id}">
+                '''
                 if before_filename:
                     html += f'''
-                        <div class="text-center">
-                            <img src="screenshots/{before_filename}" alt="Before"
-                                class="screenshot-img w-20 h-14 object-cover border border-white/10"
-                                onclick="openModal('screenshots/{before_filename}')">
-                            <span class="text-xs text-slate-500">Before</span>
-                        </div>
+                            <div>
+                                <p class="text-xs text-slate-500 mb-2">Before Action</p>
+                                <img src="screenshots/{before_filename}" alt="Before"
+                                    class="screenshot-img w-full border border-white/10 rounded-lg"
+                                    onclick="event.stopPropagation(); openModal('screenshots/{before_filename}')">
+                            </div>
                     '''
                 if after_filename:
                     html += f'''
-                        <div class="text-center">
-                            <img src="screenshots/{after_filename}" alt="After"
-                                class="screenshot-img w-20 h-14 object-cover border border-white/10"
-                                onclick="openModal('screenshots/{after_filename}')">
-                            <span class="text-xs text-slate-500">After</span>
-                        </div>
+                            <div>
+                                <p class="text-xs text-slate-500 mb-2">After Action</p>
+                                <img src="screenshots/{after_filename}" alt="After"
+                                    class="screenshot-img w-full border border-white/10 rounded-lg"
+                                    onclick="event.stopPropagation(); openModal('screenshots/{after_filename}')">
+                            </div>
                     '''
-                html += '</div>'
+                html += '''
+                        </div>
+                '''
 
             html += """
-                        </div>
                     </div>
             """
 
