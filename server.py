@@ -574,7 +574,8 @@ def handle_test(data):
     
     config = load_config()
     session_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    
+    report_dir = REPORTS_DIR / project_id / session_id
+
     def run_test():
         async def test_async():
             agent = AlphaTestAgent(
@@ -582,9 +583,9 @@ def handle_test(data):
                 status_callback=lambda msg: socketio.emit('test_progress', {'message': msg}),
                 screenshot_callback=lambda path: socketio.emit('test_screenshot', {'path': path})
             )
-            
+
             try:
-                await agent.initialize()
+                await agent.initialize(session_dir=report_dir)
                 
                 # Navigate and login
                 await agent.page.goto(project['url'], wait_until='networkidle')
@@ -638,14 +639,15 @@ def handle_run_spec(data):
     
     config = load_config()
     session_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    
+    report_dir = REPORTS_DIR / project_id / session_id
+
     # Get specs to run
     all_specs = project.get('test_specs', [])
     if spec_ids:
         specs_to_run = [s for s in all_specs if s.get('id') in spec_ids]
     else:
         specs_to_run = [s for s in all_specs if s.get('enabled', True)]
-    
+
     def run_specs():
         async def specs_async():
             agent = AlphaTestAgent(
@@ -653,9 +655,9 @@ def handle_run_spec(data):
                 status_callback=lambda msg: socketio.emit('test_progress', {'message': msg}),
                 screenshot_callback=lambda path: socketio.emit('test_screenshot', {'path': path})
             )
-            
+
             try:
-                await agent.initialize()
+                await agent.initialize(session_dir=report_dir)
                 
                 # Navigate and login
                 await agent.page.goto(project['url'], wait_until='networkidle')
