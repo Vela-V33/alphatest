@@ -500,6 +500,180 @@ def manage_team(project_id):
 
     return jsonify({'team': project['team']})
 
+
+# ============================================
+# COLLABORATION DASHBOARD
+# ============================================
+
+@app.route('/project/<project_id>/collaboration')
+@login_required
+def collaboration_dashboard(project_id):
+    """Collaboration dashboard with issue triage."""
+    projects = load_projects()
+    if project_id not in projects:
+        return "Project not found", 404
+    return render_template('collaboration.html', project_id=project_id)
+
+
+@app.route('/api/project/<project_id>/collaborators')
+@login_required
+def get_collaborators(project_id):
+    """Get project collaborators."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    project = projects[project_id]
+    users_db = load_users()
+
+    # Get owner info
+    owner_id = project.get('owner_id', session.get('user_id'))
+    owner = users_db.get(owner_id, {})
+
+    collaborators = [{
+        'id': owner_id,
+        'name': owner.get('username', 'Owner'),
+        'email': owner.get('email', ''),
+        'avatar': owner.get('username', 'U')[:2].upper(),
+        'role': 'owner'
+    }]
+
+    # Add team members
+    for member in project.get('team', []):
+        collaborators.append({
+            'id': member.get('email'),
+            'name': member.get('email', '').split('@')[0],
+            'email': member.get('email', ''),
+            'avatar': member.get('email', 'U')[:2].upper(),
+            'role': member.get('role', 'viewer')
+        })
+
+    return jsonify({'collaborators': collaborators})
+
+
+@app.route('/api/project/<project_id>/issues')
+@login_required
+def get_project_issues(project_id):
+    """Get all issues for a project."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    project = projects[project_id]
+    project_reports_dir = REPORTS_DIR / project_id
+    all_issues = []
+
+    if project_reports_dir.exists():
+        # Get the most recent report
+        report_dirs = sorted(project_reports_dir.iterdir(), reverse=True)
+        if report_dirs:
+            latest_report = report_dirs[0]
+            report_file = latest_report / "report.json"
+
+            if report_file.exists():
+                report_data = json.loads(report_file.read_text())
+
+                # Convert issues to the format expected by React
+                for idx, issue in enumerate(report_data.get('issues', [])):
+                    all_issues.append({
+                        'id': f"{latest_report.name}_{idx}",
+                        'title': issue.get('message', 'Unknown issue'),
+                        'description': issue.get('message', ''),
+                        'severity': issue.get('severity', 'medium'),
+                        'category': categorize_issue(issue),
+                        'screenshot': None,  # Will be populated if available
+                        'step': issue.get('step', 0),
+                        'timestamp': issue.get('timestamp', datetime.now().isoformat()),
+                        'status': 'open'
+                    })
+
+    return jsonify({
+        'issues': all_issues,
+        'project_name': project.get('name', 'Unknown Project')
+    })
+
+
+def categorize_issue(issue):
+    """Categorize issue based on type."""
+    issue_type = issue.get('type', '').lower()
+    message = issue.get('message', '').lower()
+
+    # Security-related
+    if any(keyword in message for keyword in ['security', 'xss', 'sql', 'injection', 'validation', 'authentication']):
+        return 'security'
+
+    # UI/UX-related
+    if any(keyword in message for keyword in ['ui', 'ux', 'button', 'dropdown', 'click', 'display', 'layout', 'visual']):
+        return 'ui-ux'
+
+    # Logic-related
+    return 'logic'
+
+
+@app.route('/api/project/<project_id>/invite', methods=['POST'])
+@login_required
+def invite_collaborator(project_id):
+    """Invite a collaborator to the project."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    data = request.json
+    email = data.get('email', '').strip().lower()
+    role = data.get('role', 'viewer')
+
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    project = projects[project_id]
+
+    if 'team' not in project:
+        project['team'] = []
+
+    # Check if already in team
+    for member in project['team']:
+        if member['email'] == email:
+            return jsonify({'error': 'User already in team'}), 400
+
+    # Add team member
+    new_member = {
+        'email': email,
+        'role': role,
+        'invited_at': datetime.now().isoformat()
+    }
+    project['team'].append(new_member)
+    save_projects(projects)
+
+    # Return collaborator in expected format
+    return jsonify({
+        'collaborator': {
+            'id': email,
+            'name': email.split('@')[0],
+            'email': email,
+            'avatar': email[:2].upper(),
+            'role': role
+        }
+    })
+
+
+@app.route('/api/project/<project_id>/export-issues', methods=['POST'])
+@login_required
+def export_issues_pdf(project_id):
+    """Export issues to PDF."""
+    # This would use a PDF generation library
+    # For now, return a placeholder
+    return jsonify({'error': 'PDF export not yet implemented'}), 501
+
+
+@app.route('/api/project/<project_id>/save', methods=['POST'])
+@login_required
+def save_project_state(project_id):
+    """Save project state."""
+    # Project is automatically saved when issues are updated
+    # This is a placeholder for future enhancements
+    return jsonify({'success': True})
+
+
 # ============================================
 # SOCKET.IO EVENTS
 # ============================================
