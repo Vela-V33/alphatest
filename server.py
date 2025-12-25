@@ -244,36 +244,51 @@ def setup():
 def new_project():
     """Create a new project."""
     if request.method == 'POST':
-        data = request.json
-        user = get_current_user()
-        projects = load_projects()
+        try:
+            data = request.get_json()
 
-        project_id = data['name'].lower().replace(' ', '-')
-        # Add timestamp to ensure uniqueness
-        import time
-        project_id = f"{project_id}-{int(time.time())}"
+            if not data:
+                return jsonify({'success': False, 'error': 'No data provided'}), 400
 
-        projects[project_id] = {
-            'id': project_id,
-            'name': data['name'],
-            'url': data['url'],
-            'login_url': data.get('login_url', ''),
-            'email': data.get('email', ''),
-            'password': data.get('password', ''),
-            'owner_id': user['id'],
-            'owner_email': user['email'],
-            'created_at': datetime.now().isoformat(),
-            'crawl_data': None,
-            'test_specs': [],
-            'test_history': []
-        }
+            if 'name' not in data or not data['name'].strip():
+                return jsonify({'success': False, 'error': 'Project name is required'}), 400
 
-        save_projects(projects)
+            if 'url' not in data or not data['url'].strip():
+                return jsonify({'success': False, 'error': 'Project URL is required'}), 400
 
-        # Add project to user's project list
-        auth.add_project_to_user(user['id'], project_id)
+            user = get_current_user()
+            projects = load_projects()
 
-        return jsonify({'success': True, 'project_id': project_id})
+            project_id = data['name'].lower().replace(' ', '-')
+            # Add timestamp to ensure uniqueness
+            import time
+            project_id = f"{project_id}-{int(time.time())}"
+
+            projects[project_id] = {
+                'id': project_id,
+                'name': data['name'].strip(),
+                'url': data['url'].strip(),
+                'login_url': data.get('login_url', '').strip(),
+                'email': data.get('email', '').strip(),
+                'password': data.get('password', '').strip(),
+                'owner_id': user['id'],
+                'owner_email': user['email'],
+                'created_at': datetime.now().isoformat(),
+                'crawl_data': None,
+                'test_specs': [],
+                'test_history': []
+            }
+
+            save_projects(projects)
+
+            # Add project to user's project list
+            auth.add_project_to_user(user['id'], project_id)
+
+            return jsonify({'success': True, 'project_id': project_id})
+
+        except Exception as e:
+            print(f"Error creating project: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
 
     user = get_current_user()
     return render_template('new_project.html', user=user)
