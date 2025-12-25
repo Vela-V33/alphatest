@@ -598,9 +598,8 @@ def handle_test(data):
                 
                 # Run the test
                 result = await agent.run_command(command)
-                
+
                 # Generate report
-                report_dir = REPORTS_DIR / project_id / session_id
                 report_data = agent.get_report_data()
                 report_path = generate_report(report_data, report_dir, project)
                 
@@ -608,9 +607,13 @@ def handle_test(data):
                     'result': result,
                     'report_url': f'/reports/{project_id}/{session_id}'
                 })
-                
+
             except Exception as e:
-                socketio.emit('test_error', {'message': str(e)})
+                import traceback
+                error_msg = str(e)
+                print(f"Test error: {error_msg}")
+                print(traceback.format_exc())
+                socketio.emit('test_error', {'message': error_msg})
             finally:
                 await agent.close()
         
@@ -676,9 +679,8 @@ def handle_run_spec(data):
                     result['spec_name'] = spec['name']
                     results.append(result)
                     socketio.emit('spec_complete', {'spec': spec, 'result': result})
-                
+
                 # Generate report
-                report_dir = REPORTS_DIR / project_id / session_id
                 report_data = agent.get_report_data()
                 report_data['specs_results'] = results
                 report_path = generate_report(report_data, report_dir, project)
@@ -687,9 +689,13 @@ def handle_run_spec(data):
                     'results': results,
                     'report_url': f'/reports/{project_id}/{session_id}'
                 })
-                
+
             except Exception as e:
-                socketio.emit('test_error', {'message': str(e)})
+                import traceback
+                error_msg = str(e)
+                print(f"Spec test error: {error_msg}")
+                print(traceback.format_exc())
+                socketio.emit('test_error', {'message': error_msg})
             finally:
                 await agent.close()
         

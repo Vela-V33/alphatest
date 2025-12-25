@@ -944,8 +944,13 @@
 
         socket.on('test_error', (data) => {
             addChatMessage('❌ Error: ' + data.message, 'bot');
+            addChatMessage('💡 Tip: You can edit your test command and try again', 'bot');
             document.getElementById('sendBtn').disabled = false;
             document.getElementById('sendBtn').innerHTML = '▶ Run';
+
+            // Show error status
+            document.getElementById('testStatus').innerHTML =
+                '<span class="text-red-400">Test failed - Check the error above and try again</span>';
         });
 
         // Select All / Deselect All
@@ -1042,6 +1047,13 @@
 
             document.getElementById('testStatus').innerHTML =
                 '<a href="' + data.report_url + '" class="text-blue-400 hover:text-blue-300 transition">View Full Report →</a>';
+
+            // Re-enable run button
+            const sendBtn = document.getElementById('sendBtn');
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '▶ Run';
+            }
         });
 
         // Team Management
