@@ -535,8 +535,10 @@ def generate_metrics_dashboard(data: Dict) -> str:
 
     html = '''
     <section class="glass-card p-6 mb-8">
-        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-            <span>📊</span>
+        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-3">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
             <span>Compliance & Performance Dashboard</span>
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -562,8 +564,10 @@ def generate_metrics_dashboard(data: Dict) -> str:
 
         html += f'''
             <div class="bg-white/5 border {border_color} rounded-lg p-4">
-                <div class="flex items-center space-x-2 mb-3">
-                    <span class="text-2xl">♿</span>
+                <div class="flex items-center space-x-3 mb-3">
+                    <svg class="w-5 h-5 {level_color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
                     <h3 class="font-semibold text-white">Accessibility</h3>
                 </div>
                 <div class="space-y-2">
@@ -606,8 +610,10 @@ def generate_metrics_dashboard(data: Dict) -> str:
 
         html += f'''
             <div class="bg-white/5 border {border_color} rounded-lg p-4">
-                <div class="flex items-center space-x-2 mb-3">
-                    <span class="text-2xl">🔒</span>
+                <div class="flex items-center space-x-3 mb-3">
+                    <svg class="w-5 h-5 {compliance_color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
                     <h3 class="font-semibold text-white">Security Headers</h3>
                 </div>
                 <div class="space-y-2">
@@ -658,8 +664,10 @@ def generate_metrics_dashboard(data: Dict) -> str:
 
         html += f'''
             <div class="bg-white/5 border {border_color} rounded-lg p-4">
-                <div class="flex items-center space-x-2 mb-3">
-                    <span class="text-2xl">⚡</span>
+                <div class="flex items-center space-x-3 mb-3">
+                    <svg class="w-5 h-5 {grade_color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
                     <h3 class="font-semibold text-white">Performance</h3>
                 </div>
                 <div class="space-y-2">
@@ -758,8 +766,10 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
             </div>
 
             <div class="p-6">
-                <h3 class="font-semibold text-slate-300 mb-4 flex items-center space-x-2">
-                    <span>📝</span>
+                <h3 class="font-semibold text-slate-300 mb-4 flex items-center space-x-3">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
                     <span>Test Steps</span>
                 </h3>
                 <div class="space-y-2">
@@ -906,18 +916,22 @@ def generate_issues_html(issues: List[Dict]) -> str:
     if not issues:
         return """
         <section class="glass-card p-8 mb-8">
-            <h2 class="text-xl font-bold text-white mb-4 flex items-center space-x-2">
-                <span>✅</span>
-                <span>No Issues Found</span>
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center space-x-3">
+                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>No Issues Detected</span>
             </h2>
-            <p class="text-slate-400">No issues were observed during testing.</p>
+            <p class="text-slate-400">All checks passed without issues.</p>
         </section>
         """
 
     html = """
     <section class="glass-card p-6 mb-8">
-        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-            <span>⚠️</span>
+        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-3">
+            <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
             <span>Issues Found During Testing</span>
         </h2>
         <div class="space-y-3">
@@ -970,8 +984,10 @@ def generate_suggestions_html(suggestions: List[Dict]) -> str:
 
     html = """
     <section class="glass-card p-6 mb-8">
-        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-            <span>💡</span>
+        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-3">
+            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
             <span>Improvement Suggestions</span>
         </h2>
         <div class="space-y-3">
@@ -984,7 +1000,9 @@ def generate_suggestions_html(suggestions: List[Dict]) -> str:
         html += f"""
         <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
             <div class="flex items-start space-x-3">
-                <span class="text-xl flex-shrink-0">💡</span>
+                <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
                 <div class="flex-1 min-w-0">
                     <p class="font-medium text-blue-400">{message}</p>
                     {f'<p class="text-slate-500 text-sm mt-1 truncate">On: {url}</p>' if url else ''}
@@ -1008,8 +1026,10 @@ def generate_screenshots_gallery(screenshots: List[Dict], screenshot_lookup: Dic
 
     html = """
     <section class="glass-card p-6 mb-8">
-        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-            <span>📸</span>
+        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-3">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
             <span>All Screenshots</span>
         </h2>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
