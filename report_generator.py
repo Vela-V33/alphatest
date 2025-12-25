@@ -408,6 +408,13 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
 
         function downloadPDF() {{
             const element = document.getElementById('report-content');
+
+            // Expand all step screenshots before PDF generation
+            const allStepScreenshots = document.querySelectorAll('.step-screenshots');
+            const allStepCards = document.querySelectorAll('.step-card');
+            allStepScreenshots.forEach(ss => ss.classList.add('active'));
+            allStepCards.forEach(card => card.classList.add('expanded'));
+
             const opt = {{
                 margin: [10, 10],
                 filename: 'alphatest-report-{output_dir.name}.pdf',
@@ -430,6 +437,9 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
 
             html2pdf().set(opt).from(element).save().then(() => {{
                 document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
+                // Collapse screenshots after PDF is generated
+                allStepScreenshots.forEach(ss => ss.classList.remove('active'));
+                allStepCards.forEach(card => card.classList.remove('expanded'));
             }});
         }}
     </script>
