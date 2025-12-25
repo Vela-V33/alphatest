@@ -24,14 +24,21 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
     # Build screenshot lookup by filename
     screenshot_lookup = {}
     for ss in data.get('screenshots', []):
-        src = Path(ss['path'])
+        src_path = ss.get('path', '')
+        if not src_path:
+            continue
+
+        src = Path(src_path)
         if src.exists():
             dst = screenshots_dir / src.name
             try:
                 shutil.copy(src, dst)
-                screenshot_lookup[ss['path']] = src.name
-            except:
-                pass
+                screenshot_lookup[src_path] = src.name
+                print(f"[DEBUG] Copied screenshot: {src.name}")
+            except Exception as e:
+                print(f"[WARNING] Failed to copy screenshot {src}: {e}")
+        else:
+            print(f"[WARNING] Screenshot file not found: {src}")
 
     # Calculate summary
     results = data.get('results', [])
@@ -543,6 +550,12 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
 
             before_filename = screenshot_lookup.get(before_shot, '')
             after_filename = screenshot_lookup.get(after_shot, '')
+
+            # Debug logging
+            if before_shot and not before_filename:
+                print(f"[WARNING] Screenshot not found in lookup: {before_shot}")
+            if after_shot and not after_filename:
+                print(f"[WARNING] Screenshot not found in lookup: {after_shot}")
 
             step_status = 'success' if success else 'failed'
             action_type = action.get('type', 'analyze')

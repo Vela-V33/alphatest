@@ -602,9 +602,10 @@ def handle_test(data):
                 # Generate report
                 report_data = agent.get_report_data()
                 report_path = generate_report(report_data, report_dir, project)
-                
+
                 socketio.emit('test_complete', {
                     'result': result,
+                    'status': result.get('status', 'completed'),
                     'report_url': f'/reports/{project_id}/{session_id}'
                 })
 

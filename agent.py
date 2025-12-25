@@ -264,13 +264,13 @@ class AlphaTestAgent:
             pass
 
         try:
-            # Wait for network to be idle
-            await self.page.wait_for_load_state('networkidle', timeout=timeout)
+            # Wait for network to be idle (shorter timeout for speed)
+            await self.page.wait_for_load_state('networkidle', timeout=min(timeout, 3000))
         except:
             pass
 
-        # Additional wait for any animations and rendering
-        await asyncio.sleep(0.5)
+        # Minimal wait for animations (reduced from 0.5s to 0.1s for speed)
+        await asyncio.sleep(0.1)
 
         # Check for common loading indicators and wait for them to disappear
         loading_selectors = [
@@ -288,18 +288,12 @@ class AlphaTestAgent:
         self.step_count += 1
 
         try:
-            # CRITICAL: Wait for page to be fully loaded
-            await self.page.wait_for_load_state('load', timeout=30000)
-            await self.page.wait_for_load_state('domcontentloaded', timeout=30000)
-            await self.page.wait_for_load_state('networkidle', timeout=30000)
+            # Quick wait for page content (reduced timeouts for speed)
+            await self.page.wait_for_load_state('domcontentloaded', timeout=5000)
+            await self.page.wait_for_selector('body', state='visible', timeout=3000)
         except Exception as e:
-            self.status(f"   ⏳ Page still loading: {e}")
-
-        # Wait for body to exist and be visible
-        try:
-            await self.page.wait_for_selector('body', state='visible', timeout=10000)
-        except:
-            self.status("   ⚠️ Body not found, page may be blank")
+            # Page might still be loading but capture anyway
+            pass
 
         # Verify page has actual content
         try:
@@ -316,8 +310,8 @@ class AlphaTestAgent:
 
             if not has_content:
                 self.status("   ⚠️ Page appears to be blank or loading")
-                # Extra wait if page seems empty
-                await asyncio.sleep(3)
+                # Quick wait if page seems empty (reduced from 3s to 0.5s)
+                await asyncio.sleep(0.5)
         except:
             pass
 
@@ -345,38 +339,14 @@ class AlphaTestAgent:
         except:
             pass
 
-        # Scroll page to force rendering
+        # Quick scroll to force rendering (removed excessive waits)
         try:
-            await self.page.evaluate('''
-                () => {
-                    window.scrollTo(0, document.body.scrollHeight / 2);
-                }
-            ''')
-            await asyncio.sleep(0.5)
-            await self.page.evaluate('() => window.scrollTo(0, 0)')
+            await self.page.evaluate('() => { window.scrollTo(0, 0); document.body.offsetHeight; }')
         except:
             pass
 
-        # CRITICAL: Long wait for rendering
-        await asyncio.sleep(3)
-
-        # Force repaints
-        try:
-            await self.page.evaluate('''
-                () => {
-                    // Force multiple reflows
-                    for (let i = 0; i < 3; i++) {
-                        document.body.offsetHeight;
-                        document.body.style.transform = 'translateZ(0)';
-                        document.body.offsetHeight;
-                        document.body.style.transform = '';
-                    }
-                }
-            ''')
-        except:
-            pass
-
-        await asyncio.sleep(1)
+        # Minimal wait for rendering (reduced from 4s total to 0.2s for SPEED)
+        await asyncio.sleep(0.2)
 
         # Generate filename
         safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)[:40]
@@ -681,7 +651,7 @@ Criteria:"""
         # Strategy 3: Click to open, then select option
         try:
             await self.page.click(selector, timeout=3000)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.2)  # Reduced from 0.5s
             
             # Look for option in opened dropdown
             option_selectors = [
@@ -705,10 +675,10 @@ Criteria:"""
         # Strategy 4: Keyboard navigation
         try:
             await self.page.click(selector, timeout=3000)
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.1)  # Reduced from 0.3s
             # Type to search/filter
             await self.page.keyboard.type(value[:10])
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.1)  # Reduced from 0.3s
             await self.page.keyboard.press('Enter')
             result = {'success': True, 'message': f'Selected "{value}" via keyboard'}
             return result
@@ -819,14 +789,13 @@ Criteria:"""
                 elem = await self.find_element_robust(selector, text_hint)
                 if elem:
                     await elem.scroll_into_view_if_needed()
-                    await asyncio.sleep(0.2)
+                    await asyncio.sleep(0.05)  # Reduced from 0.2s
 
                     # Clear and type with proper handling
                     try:
                         await elem.fill('')
-                        await asyncio.sleep(0.1)
                         await elem.fill(text)
-                        await asyncio.sleep(0.2)
+                        await asyncio.sleep(0.1)  # Reduced wait for verification
 
                         # VERIFY the value was actually set
                         actual_value = await elem.input_value()
@@ -837,7 +806,7 @@ Criteria:"""
                             await elem.click()
                             await elem.press('Control+a')
                             await elem.type(text)
-                            await asyncio.sleep(0.2)
+                            await asyncio.sleep(0.1)  # Reduced from 0.2s
 
                             # Verify again
                             actual_value = await elem.input_value()
@@ -1160,6 +1129,10 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
         # Track completed actions to prevent duplicates
         self.completed_actions = []
 
+        # AGGRESSIVE stuck detection - track recent action patterns
+        self.recent_action_patterns = []
+        stuck_threshold = 3  # If same action attempted 3 times, it's stuck
+
         result = {
             'command': command,
             'status': 'running',
@@ -1172,6 +1145,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
         await self.screenshot("test_start", {'phase': 'start', 'command': command})
 
         step_num = 0
+        consecutive_failures = 0  # Track consecutive failed actions
         while step_num < max_steps:
             step_data = {
                 'step': step_num + 1,
@@ -1189,7 +1163,49 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             step_data['action'] = action
             
             self.status(f"   💭 {thinking[:70]}...")
-            
+
+            # STUCK DETECTION: Check if agent is repeating the same failed pattern
+            action_pattern = f"{action.get('type')}:{action.get('selector', '')}"
+            self.recent_action_patterns.append(action_pattern)
+
+            # Keep only last 5 actions for pattern detection
+            if len(self.recent_action_patterns) > 5:
+                self.recent_action_patterns.pop(0)
+
+            # If same action attempted 3+ times in last 5 steps, agent is STUCK
+            pattern_count = self.recent_action_patterns.count(action_pattern)
+            if pattern_count >= stuck_threshold:
+                self.status(f"   🚨 STUCK DETECTED: Attempted {action_pattern} {pattern_count} times")
+                self.status(f"   ⏭️  Forcing agent to move on...")
+
+                # Log as issue
+                self.issues.append({
+                    'type': 'stuck_loop',
+                    'message': f"Agent got stuck trying to: {action.get('type')} on {action.get('selector', 'unknown')}. Attempted {pattern_count} times without success.",
+                    'severity': 'high',
+                    'step': step_num + 1
+                })
+
+                # Clear the stuck pattern and force completion or skip
+                self.recent_action_patterns = []
+
+                # Skip this step and let AI try something completely different next iteration
+                step_data['result'] = {'success': False, 'message': f'Stuck on action - forcing skip after {pattern_count} attempts'}
+                step_data['skipped'] = True
+                result['steps'].append(step_data)
+                self.steps.append(step_data)
+                step_num += 1
+                consecutive_failures += 1
+
+                # If stuck too many times (3+ consecutive), mark test as incomplete
+                if consecutive_failures >= 3:
+                    self.status("❌ Too many consecutive failures - stopping test")
+                    result['status'] = 'failed'
+                    result['failure_reason'] = 'Agent stuck in loop, unable to proceed'
+                    break
+
+                continue  # Skip to next iteration
+
             # Check if complete
             if analysis.get('completed', False) or action.get('type') == 'done':
                 self.status("✅ Test completed!")
@@ -1237,8 +1253,11 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
                 if action_result['success']:
                     self.completed_actions.append(action_signature)
                     self.status(f"   ✓ {action_result['message']}")
+                    consecutive_failures = 0  # Reset on success
                 else:
                     self.status(f"   ✗ {action_result['message']}")
+                    consecutive_failures += 1  # Increment on failure
+
                     # Log failed action as an issue for reporting
                     self.issues.append({
                         'type': 'action_failed',
@@ -1247,8 +1266,8 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
                         'step': step_num + 1
                     })
 
-                # Screenshot after action (faster wait)
-                await asyncio.sleep(0.3)
+                # Screenshot after action (ultra-fast for speed)
+                await asyncio.sleep(0.1)  # Reduced from 0.3s
                 after_shot = await self.screenshot(
                     f"step_{step_num + 1}_after",
                     {'phase': 'after', 'action': action, 'result': action_result}
