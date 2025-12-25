@@ -66,7 +66,14 @@ class AlphaTestAgent:
                 '--disable-dev-shm-usage',
                 '--disable-blink-features=AutomationControlled',
                 '--force-device-scale-factor=1',
-                '--window-size=1920,1080'
+                '--window-size=1920,1080',
+                '--disable-gpu',
+                '--disable-software-rasterizer',
+                '--disable-extensions',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--force-color-profile=srgb'
             ]
         )
 
@@ -80,7 +87,9 @@ class AlphaTestAgent:
             timezone_id='America/New_York',
             color_scheme='light',
             reduced_motion='no-preference',
-            forced_colors='none'
+            forced_colors='none',
+            java_script_enabled=True,
+            bypass_csp=True
         )
 
         self.page = await context.new_page()
@@ -193,61 +202,96 @@ class AlphaTestAgent:
         """Take and save screenshot with proper linking to step."""
         self.step_count += 1
 
-        # Wait for page to be stable
-        await self.wait_for_stable()
-
-        # Wait for body and ensure it has content
         try:
-            await self.page.wait_for_selector('body', state='visible', timeout=5000)
-            # Wait for any element to ensure content is loaded
-            await self.page.wait_for_selector('body *', state='attached', timeout=5000)
+            # CRITICAL: Wait for page to be fully loaded
+            await self.page.wait_for_load_state('load', timeout=30000)
+            await self.page.wait_for_load_state('domcontentloaded', timeout=30000)
+            await self.page.wait_for_load_state('networkidle', timeout=30000)
+        except Exception as e:
+            self.status(f"   ⏳ Page still loading: {e}")
+
+        # Wait for body to exist and be visible
+        try:
+            await self.page.wait_for_selector('body', state='visible', timeout=10000)
+        except:
+            self.status("   ⚠️ Body not found, page may be blank")
+
+        # Verify page has actual content
+        try:
+            has_content = await self.page.evaluate('''
+                () => {
+                    const body = document.body;
+                    if (!body) return false;
+                    const text = body.innerText || '';
+                    const hasText = text.trim().length > 10;
+                    const hasElements = document.querySelectorAll('div, p, span, img').length > 0;
+                    return hasText || hasElements;
+                }
+            ''')
+
+            if not has_content:
+                self.status("   ⚠️ Page appears to be blank or loading")
+                # Extra wait if page seems empty
+                await asyncio.sleep(3)
         except:
             pass
 
-        # Wait for fonts to load (prevents text rendering issues)
+        # Wait for fonts
         try:
             await self.page.evaluate('() => document.fonts.ready')
         except:
             pass
 
-        # Wait for images to load
+        # Wait for all images
         try:
             await self.page.evaluate('''
                 () => {
+                    const images = Array.from(document.images);
                     return Promise.all(
-                        Array.from(document.images)
-                            .filter(img => !img.complete)
-                            .map(img => new Promise(resolve => {
-                                img.onload = img.onerror = resolve;
-                            }))
+                        images.filter(img => !img.complete).map(img =>
+                            new Promise(resolve => {
+                                img.onload = img.onerror = () => resolve();
+                                setTimeout(resolve, 5000); // Timeout after 5s
+                            })
+                        )
                     );
                 }
             ''')
         except:
             pass
 
-        # Additional wait to ensure complete rendering (critical for headless)
-        await asyncio.sleep(1.5)
-
-        # Force multiple repaints to ensure rendering is complete
+        # Scroll page to force rendering
         try:
             await self.page.evaluate('''
                 () => {
-                    // Force reflow
-                    document.body.offsetHeight;
-                    // Force repaint
-                    document.body.style.display = 'none';
-                    document.body.offsetHeight;
-                    document.body.style.display = '';
-                    // Trigger another reflow
-                    document.body.offsetHeight;
+                    window.scrollTo(0, document.body.scrollHeight / 2);
+                }
+            ''')
+            await asyncio.sleep(0.5)
+            await self.page.evaluate('() => window.scrollTo(0, 0)')
+        except:
+            pass
+
+        # CRITICAL: Long wait for rendering
+        await asyncio.sleep(3)
+
+        # Force repaints
+        try:
+            await self.page.evaluate('''
+                () => {
+                    // Force multiple reflows
+                    for (let i = 0; i < 3; i++) {
+                        document.body.offsetHeight;
+                        document.body.style.transform = 'translateZ(0)';
+                        document.body.offsetHeight;
+                        document.body.style.transform = '';
+                    }
                 }
             ''')
         except:
             pass
 
-        # Final small wait after forced repaint
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(1)
 
         # Generate filename
         safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)[:40]
@@ -255,18 +299,21 @@ class AlphaTestAgent:
         filepath = self.session_dir / "screenshots" / filename
 
         try:
-            # Take screenshot with explicit options for headless mode
+            # Take screenshot
             await self.page.screenshot(
                 path=str(filepath),
-                full_page=False,  # Viewport only for faster, more reliable capture
-                type='png',
-                animations='disabled',
-                caret='hide',
-                scale='css'  # Use CSS pixels for consistent rendering
+                full_page=True,  # Full page to ensure we capture everything
+                type='png'
             )
 
-            # Verify file was created and has content
-            if filepath.exists() and filepath.stat().st_size > 1000:
+            # Verify file
+            if filepath.exists():
+                file_size = filepath.stat().st_size
+                self.status(f"   📸 Screenshot: {name} ({file_size} bytes)")
+
+                if file_size < 1000:
+                    self.status(f"   ⚠️ Screenshot file is very small, may be blank")
+
                 screenshot_data = {
                     'step': self.step_count,
                     'name': name,
@@ -274,14 +321,14 @@ class AlphaTestAgent:
                     'path': str(filepath),
                     'timestamp': datetime.now().isoformat(),
                     'url': self.page.url,
-                    'step_data': step_data
+                    'step_data': step_data,
+                    'file_size': file_size
                 }
                 self.screenshots.append(screenshot_data)
                 self.on_screenshot(str(filepath))
-                self.status(f"   📸 Screenshot: {name}")
                 return str(filepath)
             else:
-                self.status(f"   ⚠️ Screenshot may be empty: {name}")
+                self.status(f"   ⚠️ Screenshot file not created")
 
         except Exception as e:
             self.status(f"   ⚠️ Screenshot failed: {e}")
