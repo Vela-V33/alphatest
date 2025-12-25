@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports - {{ project.name }} - AlphaTest</title>
+    <title>Documents - {{ project.name }} - AlphaTest</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
 </head>
 <body>
@@ -17,10 +17,26 @@
         <!-- Header -->
         <header class="header-glass">
             <div class="container mx-auto px-6 py-4">
-                <div class="flex items-center space-x-4">
-                    <a href="/project/{{ project.id }}" class="btn-ghost text-sm">← {{ project.name }}</a>
-                    <div class="w-px h-6 bg-white/20"></div>
-                    <h1 class="text-xl font-bold text-white">Test Reports</h1>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="/project/{{ project.id }}" class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            <span class="text-sm font-medium">{{ project.name }}</span>
+                        </a>
+                        <div class="w-px h-6 bg-white/20"></div>
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <h1 class="text-xl font-bold text-white">Documents & Reports</h1>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-slate-400 text-sm">Quality Archive</p>
+                        <p class="font-semibold text-white">{{ reports|length }} reports</p>
+                    </div>
                 </div>
             </div>
         </header>
@@ -28,56 +44,215 @@
         <!-- Main Content -->
         <main class="container mx-auto px-6 py-8">
             {% if reports %}
-            <div class="space-y-4">
-                {% for report in reports %}
-                <a href="/reports/{{ project.id }}/{{ report.id }}" class="glass-card p-5 block group">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            <div class="icon-container group-hover:scale-110 transition-transform">
-                                <span class="text-xl">📊</span>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-white mb-1">{{ report.date }}</p>
-                                <div class="flex items-center space-x-3 text-sm">
-                                    <span class="flex items-center space-x-1 text-green-400">
-                                        <span class="status-dot status-dot-success"></span>
-                                        <span>{{ report.summary.passed }} passed</span>
-                                    </span>
+            <!-- Filters and Search -->
+            <div class="glass-card p-4 mb-6">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex-1 max-w-md">
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" id="searchInput" placeholder="Search reports..." class="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50">
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <select id="outcomeFilter" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500/50">
+                            <option value="all">All Outcomes</option>
+                            <option value="passed">Passed Only</option>
+                            <option value="failed">Failed Only</option>
+                        </select>
+                        <button onclick="toggleView()" class="inline-flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm hover:bg-white/10 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                            </svg>
+                            <span>List View</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Table -->
+            <div class="glass-card overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-white/5 border-b border-white/10">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Date & Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Test Run</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Outcome</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Issues</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold text-slate-300 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5" id="reportsTable">
+                        {% for report in reports %}
+                        <tr class="hover:bg-white/5 transition-colors cursor-pointer report-row"
+                            data-outcome="{{ 'passed' if report.summary.failed == 0 else 'failed' }}"
+                            onclick="window.location.href='/reports/{{ project.id }}/{{ report.id }}/report.html'">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center space-x-3">
+                                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <div>
+                                        <p class="font-medium text-white">{{ report.date.split()[0] if report.date else report.id }}</p>
+                                        <p class="text-sm text-slate-400">{{ report.date.split()[1] if report.date and ' ' in report.date else '' }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm text-slate-300">Report #{{ loop.index }}</p>
+                                <p class="text-xs text-slate-500">ID: {{ report.id[:12] }}</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if report.summary.failed == 0 %}
+                                <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Passed</span>
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Failed</span>
+                                </span>
+                                {% endif %}
+                                <div class="flex items-center space-x-2 mt-1 text-xs text-slate-400">
+                                    <span>{{ report.summary.passed }} passed</span>
                                     {% if report.summary.failed > 0 %}
-                                    <span class="flex items-center space-x-1 text-red-400">
-                                        <span class="status-dot status-dot-error"></span>
-                                        <span>{{ report.summary.failed }} failed</span>
-                                    </span>
-                                    {% endif %}
-                                    {% if report.summary.issues > 0 %}
-                                    <span class="flex items-center space-x-1 text-yellow-400">
-                                        <span class="status-dot status-dot-warning"></span>
-                                        <span>{{ report.summary.issues }} issues</span>
-                                    </span>
+                                    <span class="text-red-400">• {{ report.summary.failed }} failed</span>
                                     {% endif %}
                                 </div>
-                            </div>
-                        </div>
-                        <span class="text-slate-500 group-hover:text-blue-400 transition-colors text-xl">→</span>
-                    </div>
-                </a>
-                {% endfor %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if report.summary.issues > 0 %}
+                                <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm font-medium">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <span>{{ report.summary.issues }}</span>
+                                </span>
+                                {% else %}
+                                <span class="text-slate-500 text-sm">None</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end space-x-2">
+                                    <a href="/reports/{{ project.id }}/{{ report.id }}/report.html" class="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-medium transition-colors" onclick="event.stopPropagation()">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <span>View</span>
+                                    </a>
+                                    <button onclick="shareReport('{{ report.id }}'); event.stopPropagation()" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors" title="Share">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
             {% else %}
             <!-- Empty State -->
-            <div class="glass-card p-10 text-center max-w-lg mx-auto">
-                <div class="icon-container-lg mx-auto mb-6">
-                    <span>📊</span>
+            <div class="glass-card p-12 text-center max-w-lg mx-auto">
+                <div class="mx-auto mb-6 w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">No Reports Yet</h3>
-                <p class="text-slate-400 mb-6">Run some tests to generate reports.</p>
+                <h3 class="text-xl font-bold text-white mb-2">No Reports Generated</h3>
+                <p class="text-slate-400 mb-8">Run tests to build your quality archive and track trends over time.</p>
                 <a href="/project/{{ project.id }}" class="btn-primary inline-flex items-center space-x-2">
-                    <span>Go to Project</span>
-                    <span>→</span>
+                    <span>Return to Project</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
                 </a>
             </div>
             {% endif %}
         </main>
     </div>
+
+    <script>
+        // Search functionality
+        document.getElementById('searchInput')?.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            filterReports();
+        });
+
+        // Outcome filter
+        document.getElementById('outcomeFilter')?.addEventListener('change', function(e) {
+            filterReports();
+        });
+
+        function filterReports() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const outcomeFilter = document.getElementById('outcomeFilter').value;
+            const rows = document.querySelectorAll('.report-row');
+
+            let visibleCount = 0;
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const outcome = row.dataset.outcome;
+
+                const matchesSearch = text.includes(searchTerm);
+                const matchesOutcome = outcomeFilter === 'all' || outcome === outcomeFilter;
+
+                if (matchesSearch && matchesOutcome) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Show "no results" message if needed
+            if (visibleCount === 0 && rows.length > 0) {
+                if (!document.getElementById('noResults')) {
+                    const tbody = document.getElementById('reportsTable');
+                    const tr = document.createElement('tr');
+                    tr.id = 'noResults';
+                    tr.innerHTML = `
+                        <td colspan="5" class="px-6 py-8 text-center">
+                            <p class="text-slate-400">No reports match your filters.</p>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            } else {
+                const noResults = document.getElementById('noResults');
+                if (noResults) {
+                    noResults.remove();
+                }
+            }
+        }
+
+        // Share functionality
+        function shareReport(reportId) {
+            const url = `${window.location.origin}/reports/{{ project.id }}/${reportId}/report.html`;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('Report URL copied to clipboard!');
+                }).catch(() => {
+                    prompt('Copy this URL to share:', url);
+                });
+            } else {
+                prompt('Copy this URL to share:', url);
+            }
+        }
+
+        // View toggle (placeholder for future grid view)
+        function toggleView() {
+            // Future: toggle between list and grid view
+            alert('Grid view coming soon!');
+        }
+    </script>
 </body>
 </html>
