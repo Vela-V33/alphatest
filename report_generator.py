@@ -24,6 +24,10 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
 
     # Build screenshot lookup by filename
     screenshot_lookup = {}
+    print(f"\n[DEBUG] ===== SCREENSHOT PROCESSING =====")
+    print(f"[DEBUG] Total screenshots in data: {len(data.get('screenshots', []))}")
+    print(f"[DEBUG] Total results in data: {len(data.get('results', []))}")
+
     for ss in data.get('screenshots', []):
         src_path = ss.get('path', '')
         if not src_path:
@@ -35,11 +39,15 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             try:
                 shutil.copy(src, dst)
                 screenshot_lookup[src_path] = src.name
-                print(f"[DEBUG] Copied screenshot: {src.name}")
+                print(f"[DEBUG] ✓ Copied screenshot: {src.name}")
             except Exception as e:
                 print(f"[WARNING] Failed to copy screenshot {src}: {e}")
         else:
             print(f"[WARNING] Screenshot file not found: {src}")
+
+    print(f"[DEBUG] Total screenshots copied: {len(screenshot_lookup)}")
+    print(f"[DEBUG] Screenshot lookup keys: {list(screenshot_lookup.keys())[:3] if screenshot_lookup else 'None'}")
+    print(f"[DEBUG] ===== END SCREENSHOT PROCESSING =====\n")
 
     # Calculate summary
     results = data.get('results', [])
@@ -672,6 +680,10 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
             <p class="text-slate-400 text-center">No tests run yet.</p>
         </div>'''
 
+    print(f"\n[DEBUG] ===== TEST RESULTS HTML GENERATION =====")
+    print(f"[DEBUG] Number of test results: {len(results)}")
+    print(f"[DEBUG] Screenshot lookup has {len(screenshot_lookup)} entries")
+
     html = ""
 
     for test_idx, result in enumerate(results):
@@ -695,6 +707,10 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
             border_class = 'border-yellow-500'
 
         display_name = spec_name if spec_name else command
+
+        print(f"[DEBUG] Test {test_idx + 1}: {display_name}")
+        print(f"[DEBUG]   - Status: {status}")
+        print(f"[DEBUG]   - Steps: {len(steps)}")
 
         html += f"""
         <section class="glass-card mb-8 overflow-hidden">
@@ -734,10 +750,19 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
             after_filename = screenshot_lookup.get(after_shot, '')
 
             # Debug logging
+            has_before = bool(before_shot)
+            has_after = bool(after_shot)
+            print(f"[DEBUG]   Step {step_num}: before={has_before}, after={has_after}")
+
             if before_shot and not before_filename:
-                print(f"[WARNING] Screenshot not found in lookup: {before_shot}")
+                print(f"[WARNING]   - Before screenshot not found in lookup: {before_shot}")
+            elif before_filename:
+                print(f"[DEBUG]   - Before screenshot: {before_filename}")
+
             if after_shot and not after_filename:
-                print(f"[WARNING] Screenshot not found in lookup: {after_shot}")
+                print(f"[WARNING]   - After screenshot not found in lookup: {after_shot}")
+            elif after_filename:
+                print(f"[DEBUG]   - After screenshot: {after_filename}")
 
             step_status = 'success' if success else 'failed'
             action_type = action.get('type', 'analyze')
@@ -812,6 +837,7 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
         </section>
         """
 
+    print(f"[DEBUG] ===== END TEST RESULTS HTML GENERATION =====\n")
     return html
 
 
