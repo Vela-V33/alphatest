@@ -407,6 +407,49 @@ def project_pulse_dashboard(project_id):
                           reports=reports_data,
                           trend_data=trend_data)
 
+@app.route('/project/<project_id>/triage')
+def project_triage_board(project_id):
+    """Show Kanban triage board for issue management."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return "Project not found", 404
+
+    # Get issues from tracker
+    project_reports_dir = REPORTS_DIR / project_id
+    tracker = IssueTracker(project_reports_dir)
+
+    # Load triage state (separate from issue_tracker for workflow management)
+    triage_file = project_reports_dir / "triage_state.json"
+    triage_state = {}
+    if triage_file.exists():
+        try:
+            triage_state = json.loads(triage_file.read_text())
+        except:
+            triage_state = {}
+
+    # Get all tracked issues and enrich with triage data
+    all_issues = []
+    for fingerprint, issue_data in tracker.database.get('issues', {}).items():
+        issue = issue_data['issue_data'].copy()
+        issue['fingerprint'] = fingerprint
+        issue['status'] = issue_data.get('status', 'active')
+        issue['seen_count'] = issue_data.get('seen_count', 1)
+        issue['first_seen'] = issue_data.get('first_seen', '')
+
+        # Add triage metadata
+        triage_meta = triage_state.get(fingerprint, {})
+        issue['triage_status'] = triage_meta.get('triage_status', 'new')  # new, investigating, confirmed, fixed, closed
+        issue['assignee'] = triage_meta.get('assignee', '')
+        issue['priority'] = triage_meta.get('priority', 'medium')  # low, medium, high, critical
+        issue['notes'] = triage_meta.get('notes', [])
+
+        all_issues.append(issue)
+
+    return render_template('triage_board.html',
+                          project=project,
+                          issues=all_issues)
+
 @app.route('/reports/<project_id>/<report_id>')
 def view_report(project_id, report_id):
     """View a specific report."""
@@ -844,6 +887,119 @@ def run_all_scans(project_id):
     result = asyncio.run(scan_async())
 
     return jsonify(result)
+
+
+# ============================================
+# TRIAGE BOARD API
+# ============================================
+
+@app.route('/api/project/<project_id>/triage/update', methods=['POST'])
+@login_required
+def update_triage_status(project_id):
+    """Update triage status for an issue."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    data = request.get_json()
+    fingerprint = data.get('fingerprint')
+    updates = data.get('updates', {})
+
+    if not fingerprint:
+        return jsonify({'error': 'Fingerprint required'}), 400
+
+    # Load and update triage state
+    project_reports_dir = REPORTS_DIR / project_id
+    project_reports_dir.mkdir(parents=True, exist_ok=True)
+    triage_file = project_reports_dir / "triage_state.json"
+
+    triage_state = {}
+    if triage_file.exists():
+        try:
+            triage_state = json.loads(triage_file.read_text())
+        except:
+            triage_state = {}
+
+    # Get existing or create new entry
+    if fingerprint not in triage_state:
+        triage_state[fingerprint] = {
+            'triage_status': 'new',
+            'assignee': '',
+            'priority': 'medium',
+            'notes': [],
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': session.get('username', 'unknown')
+        }
+
+    # Apply updates
+    if 'triage_status' in updates:
+        triage_state[fingerprint]['triage_status'] = updates['triage_status']
+    if 'assignee' in updates:
+        triage_state[fingerprint]['assignee'] = updates['assignee']
+    if 'priority' in updates:
+        triage_state[fingerprint]['priority'] = updates['priority']
+
+    triage_state[fingerprint]['updated_at'] = datetime.now().isoformat()
+    triage_state[fingerprint]['updated_by'] = session.get('username', 'unknown')
+
+    # Save updated state
+    triage_file.write_text(json.dumps(triage_state, indent=2))
+
+    return jsonify({'success': True, 'triage_state': triage_state[fingerprint]})
+
+
+@app.route('/api/project/<project_id>/triage/note', methods=['POST'])
+@login_required
+def add_triage_note(project_id):
+    """Add a note/comment to an issue."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    data = request.get_json()
+    fingerprint = data.get('fingerprint')
+    note_text = data.get('note', '').strip()
+
+    if not fingerprint or not note_text:
+        return jsonify({'error': 'Fingerprint and note required'}), 400
+
+    # Load triage state
+    project_reports_dir = REPORTS_DIR / project_id
+    project_reports_dir.mkdir(parents=True, exist_ok=True)
+    triage_file = project_reports_dir / "triage_state.json"
+
+    triage_state = {}
+    if triage_file.exists():
+        try:
+            triage_state = json.loads(triage_file.read_text())
+        except:
+            triage_state = {}
+
+    # Ensure issue entry exists
+    if fingerprint not in triage_state:
+        triage_state[fingerprint] = {
+            'triage_status': 'new',
+            'assignee': '',
+            'priority': 'medium',
+            'notes': [],
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': session.get('username', 'unknown')
+        }
+
+    # Add note
+    note = {
+        'text': note_text,
+        'author': session.get('username', 'unknown'),
+        'timestamp': datetime.now().isoformat()
+    }
+    if 'notes' not in triage_state[fingerprint]:
+        triage_state[fingerprint]['notes'] = []
+    triage_state[fingerprint]['notes'].append(note)
+
+    # Save updated state
+    triage_file.write_text(json.dumps(triage_state, indent=2))
+
+    return jsonify({'success': True, 'note': note})
 
 
 # ============================================
