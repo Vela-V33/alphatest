@@ -1259,6 +1259,222 @@ def handle_run_spec(data):
     thread.start()
 
 # ============================================
+# API v1 - For Integrations (GitHub Actions, CLI, etc.)
+# ============================================
+
+# In-memory storage for active test runs (in production, use Redis)
+active_runs = {}
+
+def require_api_key(f):
+    """Decorator to require API key for API routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid Authorization header'}), 401
+
+        api_key = auth_header.replace('Bearer ', '')
+
+        # Load user by API key
+        user = auth.get_user_by_api_key(api_key)
+        if not user:
+            return jsonify({'error': 'Invalid API key'}), 401
+
+        # Attach user to request
+        request.api_user = user
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+@app.route('/api/v1/run', methods=['POST'])
+@require_api_key
+def api_trigger_run():
+    """Trigger a test run via API"""
+    try:
+        data = request.json
+        project_id = data.get('project_id')
+        base_url = data.get('base_url')
+        specs = data.get('specs')  # List of spec IDs or None for all
+        metadata = data.get('metadata', {})  # GitHub context
+
+        if not project_id:
+            return jsonify({'error': 'project_id is required'}), 400
+
+        # Load project
+        projects = load_projects()
+        if project_id not in projects:
+            return jsonify({'error': 'Project not found'}), 404
+
+        project = projects[project_id]
+
+        # Check user has access to project
+        if project.get('owner_id') != request.api_user['id']:
+            return jsonify({'error': 'Access denied'}), 403
+
+        # Generate run ID
+        run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        report_dir = REPORTS_DIR / project_id / run_id
+        report_dir.mkdir(parents=True, exist_ok=True)
+
+        # Store metadata
+        metadata_file = report_dir / "metadata.json"
+        metadata_file.write_text(json.dumps({
+            'run_id': run_id,
+            'project_id': project_id,
+            'triggered_by': 'api',
+            'user_id': request.api_user['id'],
+            'metadata': metadata,
+            'started_at': datetime.now().isoformat()
+        }, indent=2))
+
+        # Load test specs
+        test_specs = project.get('test_specs', [])
+        if specs:
+            # Filter to requested specs
+            test_specs = [s for s in test_specs if s['id'] in specs]
+        else:
+            # Only run enabled specs
+            test_specs = [s for s in test_specs if s.get('enabled', True)]
+
+        if not test_specs:
+            return jsonify({'error': 'No specs to run'}), 400
+
+        # Initialize run status
+        active_runs[run_id] = {
+            'project_id': project_id,
+            'status': 'running',
+            'progress': f'Starting {len(test_specs)} test(s)...',
+            'total': len(test_specs),
+            'completed': 0,
+            'passed': 0,
+            'failed': 0,
+            'started_at': datetime.now().isoformat()
+        }
+
+        # Run tests in background thread
+        def run_tests_api():
+            async def tests_async():
+                from agent import AlphaTestAgent
+
+                agent = AlphaTestAgent()
+                await agent.initialize(session_dir=report_dir)
+
+                try:
+                    results = []
+                    test_url = base_url or project.get('url')
+
+                    for idx, spec in enumerate(test_specs):
+                        active_runs[run_id]['progress'] = f'Running test {idx + 1}/{len(test_specs)}: {spec["name"]}'
+
+                        try:
+                            result = await agent.run_spec_test(test_url, spec)
+                            results.append(result)
+
+                            if result.get('success'):
+                                active_runs[run_id]['passed'] += 1
+                            else:
+                                active_runs[run_id]['failed'] += 1
+
+                            active_runs[run_id]['completed'] = idx + 1
+                        except Exception as e:
+                            results.append({
+                                'spec_name': spec['name'],
+                                'success': False,
+                                'error': str(e)
+                            })
+                            active_runs[run_id]['failed'] += 1
+                            active_runs[run_id]['completed'] = idx + 1
+
+                    # Generate report
+                    report_data = agent.get_report_data()
+                    report_data['results'] = results
+                    report_data['metadata'] = metadata
+
+                    generate_report(report_data, report_dir, project)
+
+                    # Update final status
+                    active_runs[run_id]['status'] = 'completed'
+                    active_runs[run_id]['completed'] = True
+                    active_runs[run_id]['finished_at'] = datetime.now().isoformat()
+                    active_runs[run_id]['report_url'] = f'/reports/{project_id}/{run_id}'
+
+                except Exception as e:
+                    active_runs[run_id]['status'] = 'failed'
+                    active_runs[run_id]['error'] = str(e)
+                finally:
+                    await agent.close()
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(tests_async())
+            loop.close()
+
+        thread = threading.Thread(target=run_tests_api, daemon=True)
+        thread.start()
+
+        return jsonify({
+            'success': True,
+            'run_id': run_id,
+            'project_id': project_id,
+            'report_url': f'/reports/{project_id}/{run_id}',
+            'status_url': f'/api/v1/run/{run_id}/status'
+        }), 202
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v1/run/<run_id>/status', methods=['GET'])
+@require_api_key
+def api_run_status(run_id):
+    """Get status of a test run"""
+    if run_id not in active_runs:
+        return jsonify({'error': 'Run not found'}), 404
+
+    run_data = active_runs[run_id].copy()
+    return jsonify(run_data)
+
+@app.route('/api/v1/projects', methods=['GET'])
+@require_api_key
+def api_list_projects():
+    """List all projects for the authenticated user"""
+    projects = load_projects()
+    user_projects = {
+        k: {
+            'id': k,
+            'name': v.get('name'),
+            'url': v.get('url'),
+            'created_at': v.get('created_at')
+        }
+        for k, v in projects.items()
+        if v.get('owner_id') == request.api_user['id']
+    }
+    return jsonify({'projects': list(user_projects.values())})
+
+@app.route('/api/v1/projects/<project_id>', methods=['GET'])
+@require_api_key
+def api_get_project(project_id):
+    """Get project details"""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    project = projects[project_id]
+    if project.get('owner_id') != request.api_user['id']:
+        return jsonify({'error': 'Access denied'}), 403
+
+    return jsonify({
+        'project': {
+            'id': project_id,
+            'name': project.get('name'),
+            'url': project.get('url'),
+            'specs': project.get('test_specs', []),
+            'created_at': project.get('created_at')
+        }
+    })
+
+# ============================================
 # MAIN
 # ============================================
 

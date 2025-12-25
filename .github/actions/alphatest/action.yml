@@ -1,0 +1,52 @@
+name: 'AlphaTest'
+description: 'AI-powered autonomous testing for your web applications'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  api-key:
+    description: 'AlphaTest API key (get from dashboard)'
+    required: true
+  project-id:
+    description: 'Project ID to run tests for'
+    required: true
+  base-url:
+    description: 'Base URL to test (overrides project URL)'
+    required: false
+  specs:
+    description: 'Comma-separated list of spec IDs to run (default: all enabled specs)'
+    required: false
+    default: 'all'
+  fail-on-error:
+    description: 'Fail the workflow if tests fail'
+    required: false
+    default: 'true'
+  wait-for-completion:
+    description: 'Wait for tests to complete before continuing'
+    required: false
+    default: 'true'
+  timeout:
+    description: 'Maximum time to wait for tests (in minutes)'
+    required: false
+    default: '30'
+  comment-on-pr:
+    description: 'Post test results as PR comment'
+    required: false
+    default: 'true'
+
+outputs:
+  report-url:
+    description: 'URL to the test report'
+  passed:
+    description: 'Number of tests that passed'
+  failed:
+    description: 'Number of tests that failed'
+  total:
+    description: 'Total number of tests run'
+  success:
+    description: 'Overall test success (true/false)'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

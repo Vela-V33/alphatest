@@ -207,3 +207,98 @@ def remove_project_from_user(user_id: str, project_id: str):
 def generate_session_token() -> str:
     """Generate a secure session token."""
     return secrets.token_urlsafe(32)
+
+
+def generate_api_key(user_id: str, name: str = "Default API Key") -> Optional[Dict]:
+    """Generate a new API key for a user."""
+    users = load_users()
+
+    # Find user
+    for email, user in users.items():
+        if user['id'] == user_id:
+            # Generate API key with 'at_' prefix (AlphaTest)
+            api_key = 'at_' + secrets.token_urlsafe(32)
+
+            # Initialize api_keys if not exists
+            if 'api_keys' not in user:
+                user['api_keys'] = []
+
+            # Create API key record
+            key_record = {
+                'key': api_key,
+                'name': name,
+                'created_at': datetime.now().isoformat(),
+                'last_used': None,
+                'active': True
+            }
+
+            user['api_keys'].append(key_record)
+            users[email] = user
+            save_users(users)
+
+            return {
+                'success': True,
+                'api_key': api_key,
+                'name': name
+            }
+
+    return None
+
+
+def get_user_by_api_key(api_key: str) -> Optional[Dict]:
+    """Get user by API key."""
+    users = load_users()
+
+    for email, user in users.items():
+        api_keys = user.get('api_keys', [])
+        for key_record in api_keys:
+            if key_record.get('key') == api_key and key_record.get('active', True):
+                # Update last used
+                key_record['last_used'] = datetime.now().isoformat()
+                users[email] = user
+                save_users(users)
+
+                # Return user data (without sensitive info)
+                return {
+                    'id': user['id'],
+                    'email': user['email'],
+                    'name': user['name'],
+                    'projects': user.get('projects', [])
+                }
+
+    return None
+
+
+def list_api_keys(user_id: str) -> list:
+    """List all API keys for a user (without showing full key)."""
+    users = load_users()
+
+    for email, user in users.items():
+        if user['id'] == user_id:
+            api_keys = user.get('api_keys', [])
+            return [{
+                'name': key['name'],
+                'key_preview': key['key'][:10] + '...' if len(key['key']) > 10 else key['key'],
+                'created_at': key['created_at'],
+                'last_used': key.get('last_used'),
+                'active': key.get('active', True)
+            } for key in api_keys]
+
+    return []
+
+
+def revoke_api_key(user_id: str, api_key_preview: str) -> bool:
+    """Revoke an API key."""
+    users = load_users()
+
+    for email, user in users.items():
+        if user['id'] == user_id:
+            api_keys = user.get('api_keys', [])
+            for key_record in api_keys:
+                if key_record['key'].startswith(api_key_preview.replace('...', '')):
+                    key_record['active'] = False
+                    users[email] = user
+                    save_users(users)
+                    return True
+
+    return False
