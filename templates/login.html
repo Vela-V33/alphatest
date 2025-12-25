@@ -205,7 +205,7 @@
                     btn.innerHTML = '<i data-lucide="check" class="w-5 h-5 inline mr-2"></i> Success! Redirecting...';
                     lucide.createIcons();
                     setTimeout(() => {
-                        window.location.href = '/';
+                        window.location.href = '/dashboard';
                     }, 500);
                 } else {
                     errorMsg.textContent = data.error || 'Invalid credentials';
