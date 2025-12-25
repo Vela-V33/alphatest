@@ -19,6 +19,7 @@ import yaml
 from crawler import AppCrawler
 from agent import AlphaTestAgent
 from report_generator import generate_report
+from issue_tracker import IssueTracker
 import auth
 
 app = Flask(__name__)
@@ -925,6 +926,14 @@ def handle_test(data):
                 report_data['accessibility_results'] = accessibility_results
                 report_data['security_results'] = security_results
                 report_data['performance_results'] = performance_results
+
+                # Track issues for regression detection
+                project_reports_dir = REPORTS_DIR / project_id
+                tracker = IssueTracker(project_reports_dir)
+                tracking_results = tracker.process_test_run(session_id, report_data.get('issues', []))
+
+                # Add tracking data to report
+                report_data['issue_tracking'] = tracking_results
                 report_path = generate_report(report_data, report_dir, project)
 
                 socketio.emit('test_complete', {
@@ -1022,6 +1031,14 @@ def handle_run_spec(data):
                 report_data['accessibility_results'] = accessibility_results
                 report_data['security_results'] = security_results
                 report_data['performance_results'] = performance_results
+
+                # Track issues for regression detection
+                project_reports_dir = REPORTS_DIR / project_id
+                tracker = IssueTracker(project_reports_dir)
+                tracking_results = tracker.process_test_run(session_id, report_data.get('issues', []))
+
+                # Add tracking data to report
+                report_data['issue_tracking'] = tracking_results
                 report_path = generate_report(report_data, report_dir, project)
                 
                 socketio.emit('all_specs_complete', {

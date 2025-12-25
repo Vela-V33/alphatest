@@ -435,6 +435,9 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             <!-- Test Results with Step-by-Step -->
             {generate_test_results_html(results, screenshot_lookup)}
 
+            <!-- Issue Tracking Summary -->
+            {generate_issue_tracking_summary(data.get('issue_tracking', {}))}
+
             <!-- Issues Found -->
             {generate_issues_html(relevant_issues)}
 
@@ -958,6 +961,84 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
     return html
 
 
+def generate_issue_tracking_summary(tracking_data: Dict) -> str:
+    """Generate HTML summary of issue tracking results."""
+    if not tracking_data or not tracking_data.get('summary'):
+        return ""
+
+    summary = tracking_data.get('summary', {})
+    new_count = summary.get('new_count', 0)
+    recurring_count = summary.get('recurring_count', 0)
+    regressed_count = summary.get('regressed_count', 0)
+    fixed_count = summary.get('fixed_count', 0)
+    total_current = summary.get('total_current', 0)
+
+    # Don't show if there's no tracking data
+    if new_count == 0 and recurring_count == 0 and regressed_count == 0 and fixed_count == 0:
+        return ""
+
+    # Determine overall trend
+    trend_class = 'text-green-400'
+    trend_icon_path = 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'  # Trending down (good)
+    trend_message = 'Quality improving'
+
+    if regressed_count > 0:
+        trend_class = 'text-red-400'
+        trend_icon_path = 'M13 17h8m0 0V9m0 8l-8-8-4 4-6-6'  # Trending up (bad)
+        trend_message = f'{regressed_count} regression{"s" if regressed_count != 1 else ""} detected'
+    elif fixed_count > new_count:
+        trend_class = 'text-green-400'
+        trend_message = f'{fixed_count} issue{"s" if fixed_count != 1 else ""} resolved'
+    elif new_count > 0:
+        trend_class = 'text-blue-400'
+        trend_icon_path = 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
+        trend_message = f'{new_count} new issue{"s" if new_count != 1 else ""} found'
+
+    html = f"""
+    <section class="glass-card p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-white flex items-center space-x-3">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span>Regression Tracking</span>
+            </h2>
+            <div class="flex items-center space-x-2 {trend_class}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{trend_icon_path}" />
+                </svg>
+                <span class="text-sm font-medium">{trend_message}</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+                <div class="text-2xl font-bold text-white">{total_current}</div>
+                <div class="text-xs text-slate-400 mt-1">Total Issues</div>
+            </div>
+            <div class="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
+                <div class="text-2xl font-bold text-blue-400">{new_count}</div>
+                <div class="text-xs text-slate-400 mt-1">New</div>
+            </div>
+            <div class="bg-slate-500/10 rounded-lg p-4 border border-slate-500/30">
+                <div class="text-2xl font-bold text-slate-400">{recurring_count}</div>
+                <div class="text-xs text-slate-400 mt-1">Recurring</div>
+            </div>
+            <div class="bg-red-500/10 rounded-lg p-4 border border-red-500/30">
+                <div class="text-2xl font-bold text-red-400">{regressed_count}</div>
+                <div class="text-xs text-slate-400 mt-1">Regressed</div>
+            </div>
+            <div class="bg-green-500/10 rounded-lg p-4 border border-green-500/30">
+                <div class="text-2xl font-bold text-green-400">{fixed_count}</div>
+                <div class="text-xs text-slate-400 mt-1">Fixed</div>
+            </div>
+        </div>
+    </section>
+    """
+
+    return html
+
+
 def generate_issues_html(issues: List[Dict]) -> str:
     """Generate HTML for issues section."""
     if not issues:
@@ -988,28 +1069,82 @@ def generate_issues_html(issues: List[Dict]) -> str:
         message = issue.get('message', '')
         severity = issue.get('severity', 'medium')
         url = issue.get('url', '')
+        tracking_status = issue.get('tracking_status', '')
+        first_seen = issue.get('first_seen', '')
+        seen_count = issue.get('seen_count', 1)
 
         # Severity styling
         if severity == 'critical':
             bg_class = 'bg-red-500/10 border-red-500/30'
-            icon = '🔴'
+            icon_color = 'text-red-400'
             text_class = 'text-red-400'
         elif severity == 'high':
             bg_class = 'bg-orange-500/10 border-orange-500/30'
-            icon = '🟠'
+            icon_color = 'text-orange-400'
             text_class = 'text-orange-400'
         else:
             bg_class = 'bg-yellow-500/10 border-yellow-500/30'
-            icon = '🟡'
+            icon_color = 'text-yellow-400'
             text_class = 'text-yellow-400'
+
+        # SVG icon for severity
+        severity_icon = f'''
+            <svg class="w-5 h-5 {icon_color}" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+            </svg>
+        '''
+
+        # Tracking status badge
+        tracking_badge = ''
+        if tracking_status == 'new':
+            tracking_badge = '''
+                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-medium">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>NEW</span>
+                </span>
+            '''
+        elif tracking_status == 'regressed':
+            tracking_badge = '''
+                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>REGRESSION</span>
+                </span>
+            '''
+        elif tracking_status == 'recurring' and seen_count > 1:
+            tracking_badge = f'''
+                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-slate-500/10 border border-slate-500/30 text-slate-400 text-xs font-medium">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>SEEN {seen_count}x</span>
+                </span>
+            '''
+
+        # Format first seen date
+        first_seen_text = ''
+        if first_seen and tracking_status in ['recurring', 'regressed']:
+            try:
+                from datetime import datetime as dt_import
+                first_seen_dt = dt_import.fromisoformat(first_seen.replace('Z', '+00:00'))
+                first_seen_text = f'<p class="text-slate-500 text-xs mt-1">First detected: {first_seen_dt.strftime("%Y-%m-%d %H:%M")}</p>'
+            except:
+                pass
 
         html += f"""
         <div class="{bg_class} border rounded-lg p-4">
             <div class="flex items-start space-x-3">
-                <span class="text-xl flex-shrink-0">{icon}</span>
+                <span class="flex-shrink-0 mt-0.5">{severity_icon}</span>
                 <div class="flex-1 min-w-0">
-                    <p class="font-medium {text_class}">{message}</p>
-                    {f'<p class="text-slate-500 text-sm mt-1 truncate">On: {url}</p>' if url else ''}
+                    <div class="flex items-center flex-wrap gap-2 mb-1">
+                        <p class="font-medium {text_class}">{message}</p>
+                        {tracking_badge}
+                    </div>
+                    {f'<p class="text-slate-500 text-sm truncate">On: {url}</p>' if url else ''}
+                    {first_seen_text}
                 </div>
                 <span class="text-xs text-slate-500 uppercase flex-shrink-0">{severity}</span>
             </div>
