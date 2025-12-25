@@ -674,6 +674,142 @@ def save_project_state(project_id):
     return jsonify({'success': True})
 
 
+@app.route('/api/project/<project_id>/scan/accessibility', methods=['POST'])
+@login_required
+def run_accessibility_scan(project_id):
+    """Run WCAG 2.1 accessibility scan on project URL."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    project = projects[project_id]
+    config = load_config()
+
+    async def scan_async():
+        from agent import AlphaTestAgent
+        agent = AlphaTestAgent(config.get('anthropic_api_key'))
+        try:
+            await agent.initialize()
+            await agent.page.goto(project['url'], wait_until='networkidle')
+            result = await agent.run_accessibility_scan()
+            await agent.close()
+            return result
+        except Exception as e:
+            await agent.close()
+            return {'error': str(e)}
+
+    # Run async scan
+    import asyncio
+    result = asyncio.run(scan_async())
+
+    return jsonify(result)
+
+
+@app.route('/api/project/<project_id>/scan/security', methods=['POST'])
+@login_required
+def run_security_scan(project_id):
+    """Run security headers check on project URL."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    project = projects[project_id]
+    config = load_config()
+
+    async def scan_async():
+        from agent import AlphaTestAgent
+        agent = AlphaTestAgent(config.get('anthropic_api_key'))
+        try:
+            await agent.initialize()
+            response = await agent.page.goto(project['url'], wait_until='networkidle')
+            result = await agent.check_security_headers(response)
+            await agent.close()
+            return result
+        except Exception as e:
+            await agent.close()
+            return {'error': str(e)}
+
+    # Run async scan
+    import asyncio
+    result = asyncio.run(scan_async())
+
+    return jsonify(result)
+
+
+@app.route('/api/project/<project_id>/scan/performance', methods=['POST'])
+@login_required
+def run_performance_scan(project_id):
+    """Run Lighthouse performance audit on project URL."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    project = projects[project_id]
+    config = load_config()
+
+    async def scan_async():
+        from agent import AlphaTestAgent
+        agent = AlphaTestAgent(config.get('anthropic_api_key'))
+        try:
+            await agent.initialize()
+            await agent.page.goto(project['url'], wait_until='networkidle')
+            result = await agent.run_lighthouse_audit()
+            await agent.close()
+            return result
+        except Exception as e:
+            await agent.close()
+            return {'error': str(e)}
+
+    # Run async scan
+    import asyncio
+    result = asyncio.run(scan_async())
+
+    return jsonify(result)
+
+
+@app.route('/api/project/<project_id>/scan/all', methods=['POST'])
+@login_required
+def run_all_scans(project_id):
+    """Run all scans (accessibility, security, performance) on project URL."""
+    projects = load_projects()
+    if project_id not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    project = projects[project_id]
+    config = load_config()
+
+    async def scan_async():
+        from agent import AlphaTestAgent
+        agent = AlphaTestAgent(config.get('anthropic_api_key'))
+        try:
+            await agent.initialize()
+            response = await agent.page.goto(project['url'], wait_until='networkidle')
+
+            # Run all scans
+            accessibility = await agent.run_accessibility_scan()
+            security = await agent.check_security_headers(response)
+            performance = await agent.run_lighthouse_audit()
+
+            await agent.close()
+
+            return {
+                'accessibility': accessibility,
+                'security': security,
+                'performance': performance,
+                'url': project['url'],
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            await agent.close()
+            return {'error': str(e)}
+
+    # Run async scan
+    import asyncio
+    result = asyncio.run(scan_async())
+
+    return jsonify(result)
+
+
 # ============================================
 # SOCKET.IO EVENTS
 # ============================================

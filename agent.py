@@ -172,6 +172,426 @@ class AlphaTestAgent:
         except:
             return {}
 
+    async def run_accessibility_scan(self) -> Dict:
+        """Run axe-core accessibility audit for WCAG 2.1 compliance.
+
+        Returns:
+            Dictionary containing:
+            - violations: List of accessibility violations
+            - wcag_level: Compliance level (A, AA, AAA)
+            - critical_count: Number of critical violations
+            - url: Page URL
+        """
+        try:
+            # Inject axe-core library
+            await self.page.add_script_tag(url='https://unpkg.com/axe-core@latest/axe.min.js')
+
+            # Run axe accessibility audit
+            results = await self.page.evaluate('''async () => {
+                try {
+                    const results = await axe.run();
+                    return {
+                        violations: results.violations.map(v => ({
+                            id: v.id,
+                            impact: v.impact,
+                            description: v.description,
+                            help: v.help,
+                            helpUrl: v.helpUrl,
+                            tags: v.tags,
+                            nodes: v.nodes.length,
+                            wcagLevel: v.tags.find(t => t.startsWith('wcag'))
+                        })),
+                        passes: results.passes.length,
+                        incomplete: results.incomplete.length,
+                        inapplicable: results.inapplicable.length,
+                        url: window.location.href
+                    };
+                } catch (error) {
+                    return { error: error.message, url: window.location.href };
+                }
+            }''')
+
+            if 'error' in results:
+                self.status(f"   ⚠️ Accessibility scan error: {results['error']}")
+                return {'violations': [], 'error': results['error']}
+
+            violations = results.get('violations', [])
+
+            # Count violations by impact level
+            critical_count = sum(1 for v in violations if v.get('impact') == 'critical')
+            serious_count = sum(1 for v in violations if v.get('impact') == 'serious')
+            moderate_count = sum(1 for v in violations if v.get('impact') == 'moderate')
+            minor_count = sum(1 for v in violations if v.get('impact') == 'minor')
+
+            # Determine WCAG compliance level
+            wcag_level = 'AAA'
+            if critical_count > 0 or serious_count > 0:
+                wcag_level = 'Non-compliant'
+            elif moderate_count > 5:
+                wcag_level = 'AA (with issues)'
+            elif moderate_count > 0:
+                wcag_level = 'AA'
+
+            result = {
+                'violations': violations,
+                'wcag_level': wcag_level,
+                'critical_count': critical_count,
+                'serious_count': serious_count,
+                'moderate_count': moderate_count,
+                'minor_count': minor_count,
+                'total_violations': len(violations),
+                'passes': results.get('passes', 0),
+                'url': results.get('url', ''),
+                'timestamp': datetime.now().isoformat()
+            }
+
+            # Log violations as issues
+            for violation in violations:
+                severity = 'critical' if violation['impact'] in ['critical', 'serious'] else 'medium'
+                self.issues.append({
+                    'type': 'accessibility',
+                    'message': f"[WCAG] {violation['help']}",
+                    'description': violation['description'],
+                    'severity': severity,
+                    'url': results.get('url', ''),
+                    'wcag_tags': violation.get('tags', []),
+                    'help_url': violation.get('helpUrl', ''),
+                    'affected_elements': violation.get('nodes', 0),
+                    'timestamp': datetime.now().isoformat()
+                })
+
+            if critical_count > 0:
+                self.status(f"   ♿ Accessibility: {critical_count} critical, {serious_count} serious violations")
+            else:
+                self.status(f"   ✓ Accessibility: WCAG {wcag_level}")
+
+            return result
+
+        except Exception as e:
+            self.status(f"   ⚠️ Accessibility scan failed: {e}")
+            return {'violations': [], 'error': str(e)}
+
+    async def check_security_headers(self, response = None) -> Dict:
+        """Check for security headers in HTTP response.
+
+        Validates presence of critical security headers per OWASP recommendations:
+        - Content-Security-Policy
+        - X-Frame-Options
+        - X-Content-Type-Options
+        - Strict-Transport-Security
+        - X-XSS-Protection
+        - Referrer-Policy
+        - Permissions-Policy
+
+        Args:
+            response: Playwright response object (optional, uses current page if None)
+
+        Returns:
+            Dictionary containing:
+            - present: List of present security headers
+            - missing: List of missing security headers
+            - issues: List of security issues found
+        """
+        try:
+            # Get response if not provided
+            if response is None:
+                # Navigate to current URL to get fresh response
+                response = await self.page.goto(self.page.url, wait_until='domcontentloaded')
+
+            if not response:
+                return {'error': 'No response available'}
+
+            headers = response.headers
+            url = response.url
+
+            # Define required security headers
+            required_headers = {
+                'content-security-policy': {
+                    'risk': 'XSS and code injection attacks',
+                    'severity': 'high',
+                    'recommendation': 'Implement Content-Security-Policy to prevent XSS'
+                },
+                'x-frame-options': {
+                    'risk': 'Clickjacking vulnerability',
+                    'severity': 'high',
+                    'recommendation': 'Add X-Frame-Options: DENY or SAMEORIGIN'
+                },
+                'x-content-type-options': {
+                    'risk': 'MIME sniffing attacks',
+                    'severity': 'medium',
+                    'recommendation': 'Add X-Content-Type-Options: nosniff'
+                },
+                'strict-transport-security': {
+                    'risk': 'Man-in-the-middle attacks',
+                    'severity': 'high',
+                    'recommendation': 'Add Strict-Transport-Security header for HTTPS enforcement'
+                },
+                'x-xss-protection': {
+                    'risk': 'Legacy XSS attacks',
+                    'severity': 'low',
+                    'recommendation': 'Add X-XSS-Protection: 1; mode=block'
+                },
+                'referrer-policy': {
+                    'risk': 'Information leakage via Referer header',
+                    'severity': 'medium',
+                    'recommendation': 'Add Referrer-Policy: strict-origin-when-cross-origin'
+                },
+                'permissions-policy': {
+                    'risk': 'Unwanted feature access',
+                    'severity': 'low',
+                    'recommendation': 'Add Permissions-Policy to control browser features'
+                }
+            }
+
+            present_headers = []
+            missing_headers = []
+            issues_found = []
+
+            for header_name, header_info in required_headers.items():
+                if header_name in headers or header_name.replace('-', '') in headers:
+                    present_headers.append(header_name)
+                else:
+                    missing_headers.append(header_name)
+
+                    # Create issue for missing header
+                    issue = {
+                        'type': 'security',
+                        'message': f"Missing security header: {header_name}",
+                        'description': f"Risk: {header_info['risk']}",
+                        'severity': header_info['severity'],
+                        'recommendation': header_info['recommendation'],
+                        'url': url,
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    issues_found.append(issue)
+                    self.issues.append(issue)
+
+            result = {
+                'present': present_headers,
+                'missing': missing_headers,
+                'issues': issues_found,
+                'total_checked': len(required_headers),
+                'compliance_percentage': (len(present_headers) / len(required_headers)) * 100,
+                'url': url,
+                'timestamp': datetime.now().isoformat()
+            }
+
+            if len(missing_headers) > 0:
+                self.status(f"   🔒 Security: {len(missing_headers)} missing headers ({result['compliance_percentage']:.0f}% compliant)")
+            else:
+                self.status(f"   ✓ Security: All headers present (100% compliant)")
+
+            return result
+
+        except Exception as e:
+            self.status(f"   ⚠️ Security headers check failed: {e}")
+            return {'error': str(e)}
+
+    async def run_lighthouse_audit(self) -> Dict:
+        """Run Lighthouse performance audit.
+
+        Measures Core Web Vitals and performance metrics:
+        - Performance score
+        - Accessibility score
+        - Best practices score
+        - SEO score
+        - LCP (Largest Contentful Paint)
+        - FID (First Input Delay)
+        - CLS (Cumulative Layout Shift)
+        - FCP (First Contentful Paint)
+        - TTI (Time to Interactive)
+
+        Returns:
+            Dictionary containing Lighthouse scores and Core Web Vitals
+        """
+        try:
+            # Measure Core Web Vitals and performance
+            metrics = await self.page.evaluate('''async () => {
+                return new Promise((resolve) => {
+                    // Get performance metrics
+                    const perf = performance;
+                    const navigation = perf.getEntriesByType('navigation')[0];
+                    const paint = perf.getEntriesByType('paint');
+
+                    // Core Web Vitals
+                    let lcp = 0;
+                    let fcp = 0;
+                    let cls = 0;
+                    let fid = 0;
+
+                    // FCP (First Contentful Paint)
+                    const fcpEntry = paint.find(entry => entry.name === 'first-contentful-paint');
+                    if (fcpEntry) {
+                        fcp = fcpEntry.startTime;
+                    }
+
+                    // Largest Contentful Paint (LCP)
+                    const lcpObserver = new PerformanceObserver((list) => {
+                        const entries = list.getEntries();
+                        const lastEntry = entries[entries.length - 1];
+                        lcp = lastEntry.renderTime || lastEntry.loadTime;
+                    });
+
+                    // Cumulative Layout Shift (CLS)
+                    let clsValue = 0;
+                    const clsObserver = new PerformanceObserver((list) => {
+                        for (const entry of list.getEntries()) {
+                            if (!entry.hadRecentInput) {
+                                clsValue += entry.value;
+                            }
+                        }
+                    });
+
+                    // Try to get existing LCP entries
+                    try {
+                        lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
+                    } catch (e) {
+                        // Fallback for browsers that don't support LCP
+                        lcp = navigation ? navigation.domContentLoadedEventEnd : 0;
+                    }
+
+                    // Try to get CLS entries
+                    try {
+                        clsObserver.observe({ type: 'layout-shift', buffered: true });
+                    } catch (e) {}
+
+                    // Wait a bit for observers to collect data
+                    setTimeout(() => {
+                        cls = clsValue;
+
+                        // Calculate scores (simplified Lighthouse scoring)
+                        const tti = navigation ? navigation.domInteractive : 0;
+                        const loadTime = navigation ? navigation.loadEventEnd - navigation.fetchStart : 0;
+
+                        // Performance score calculation (simplified)
+                        let perfScore = 100;
+                        if (fcp > 3000) perfScore -= 20;
+                        if (lcp > 2500) perfScore -= 20;
+                        if (tti > 3800) perfScore -= 20;
+                        if (cls > 0.1) perfScore -= 20;
+                        if (loadTime > 5000) perfScore -= 20;
+
+                        // Basic accessibility check
+                        const images = document.querySelectorAll('img:not([alt])').length;
+                        const headings = document.querySelectorAll('h1').length;
+                        const accessibilityScore = Math.max(0, 100 - (images * 5) - (headings === 0 ? 10 : 0));
+
+                        // Best practices check
+                        const hasHttps = window.location.protocol === 'https:';
+                        const hasDoctype = document.doctype !== null;
+                        const hasViewport = !!document.querySelector('meta[name="viewport"]');
+                        const bestPracticesScore = (hasHttps ? 40 : 0) + (hasDoctype ? 30 : 0) + (hasViewport ? 30 : 0);
+
+                        // SEO check
+                        const hasTitle = !!document.title && document.title.length > 0;
+                        const hasMetaDesc = !!document.querySelector('meta[name="description"]');
+                        const hasH1 = headings > 0;
+                        const seoScore = (hasTitle ? 40 : 0) + (hasMetaDesc ? 30 : 0) + (hasH1 ? 30 : 0);
+
+                        resolve({
+                            scores: {
+                                performance: Math.max(0, perfScore) / 100,
+                                accessibility: accessibilityScore / 100,
+                                bestPractices: bestPracticesScore / 100,
+                                seo: seoScore / 100
+                            },
+                            coreWebVitals: {
+                                lcp: lcp,
+                                fid: fid,
+                                cls: cls,
+                                fcp: fcp,
+                                tti: tti
+                            },
+                            metrics: {
+                                loadTime: loadTime,
+                                domContentLoaded: navigation ? navigation.domContentLoadedEventEnd - navigation.fetchStart : 0,
+                                timeToInteractive: tti,
+                                firstContentfulPaint: fcp
+                            },
+                            url: window.location.href
+                        });
+                    }, 1000);
+                });
+            }''')
+
+            # Add timestamp
+            metrics['timestamp'] = datetime.now().isoformat()
+
+            # Determine performance grade
+            perf_score = metrics['scores']['performance']
+            if perf_score >= 0.9:
+                grade = 'Excellent'
+            elif perf_score >= 0.75:
+                grade = 'Good'
+            elif perf_score >= 0.5:
+                grade = 'Needs Improvement'
+            else:
+                grade = 'Poor'
+
+            metrics['performanceGrade'] = grade
+
+            # Check Core Web Vitals thresholds
+            cwv = metrics['coreWebVitals']
+            cwv_issues = []
+
+            if cwv['lcp'] > 2500:
+                cwv_issues.append({
+                    'metric': 'LCP',
+                    'value': f"{cwv['lcp']:.0f}ms",
+                    'threshold': '2500ms',
+                    'severity': 'high' if cwv['lcp'] > 4000 else 'medium'
+                })
+
+            if cwv['cls'] > 0.1:
+                cwv_issues.append({
+                    'metric': 'CLS',
+                    'value': f"{cwv['cls']:.3f}",
+                    'threshold': '0.1',
+                    'severity': 'high' if cwv['cls'] > 0.25 else 'medium'
+                })
+
+            if cwv['fcp'] > 1800:
+                cwv_issues.append({
+                    'metric': 'FCP',
+                    'value': f"{cwv['fcp']:.0f}ms",
+                    'threshold': '1800ms',
+                    'severity': 'medium'
+                })
+
+            # Log performance issues
+            for issue in cwv_issues:
+                self.issues.append({
+                    'type': 'performance',
+                    'message': f"[Core Web Vitals] {issue['metric']} exceeds threshold",
+                    'description': f"{issue['metric']}: {issue['value']} (threshold: {issue['threshold']})",
+                    'severity': issue['severity'],
+                    'url': metrics['url'],
+                    'timestamp': datetime.now().isoformat()
+                })
+
+            # Log poor scores
+            for category, score in metrics['scores'].items():
+                if score < 0.5:
+                    self.issues.append({
+                        'type': 'performance',
+                        'message': f"[Lighthouse] Poor {category} score",
+                        'description': f"{category.capitalize()} score: {score*100:.0f}/100",
+                        'severity': 'medium',
+                        'url': metrics['url'],
+                        'timestamp': datetime.now().isoformat()
+                    })
+
+            self.status(f"   ⚡ Performance: {grade} ({perf_score*100:.0f}/100)")
+
+            if cwv_issues:
+                self.status(f"   ⚠️ Core Web Vitals: {len(cwv_issues)} metrics exceed thresholds")
+
+            return metrics
+
+        except Exception as e:
+            self.status(f"   ⚠️ Lighthouse audit failed: {e}")
+            return {'error': str(e)}
+
     def generate_fake_data(self, field_type: str, field_name: str = "") -> str:
         """Generate realistic fake data for form filling."""
         field_name_lower = field_name.lower()

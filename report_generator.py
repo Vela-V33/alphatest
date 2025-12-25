@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 import shutil
+import xml.etree.ElementTree as ET
 
 
 def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
@@ -363,6 +364,9 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
                 </div>
             </div>
 
+            <!-- Compliance & Performance Metrics -->
+            {generate_metrics_dashboard(data)}
+
             <!-- Test Results with Step-by-Step -->
             {generate_test_results_html(results, screenshot_lookup)}
 
@@ -479,7 +483,185 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
     }
     json_path.write_text(json.dumps(json_data, indent=2))
 
+    # Generate JUnit XML for CI/CD integration
+    junit_path = output_dir / "junit.xml"
+    generate_junit_xml(data, junit_path, project)
+    print(f"[INFO] JUnit XML report generated: {junit_path}")
+
     return str(report_path)
+
+
+def generate_metrics_dashboard(data: Dict) -> str:
+    """Generate HTML for compliance and performance metrics dashboard."""
+    # Extract metrics from data
+    accessibility = data.get('accessibility_results', {})
+    security = data.get('security_results', {})
+    performance = data.get('performance_results', {})
+
+    # If no metrics available, return empty
+    if not accessibility and not security and not performance:
+        return ""
+
+    html = '''
+    <section class="glass-card p-6 mb-8">
+        <h2 class="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+            <span>📊</span>
+            <span>Compliance & Performance Dashboard</span>
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    '''
+
+    # Accessibility Section
+    if accessibility:
+        wcag_level = accessibility.get('wcag_level', 'Unknown')
+        total_violations = accessibility.get('total_violations', 0)
+        critical_count = accessibility.get('critical_count', 0)
+        serious_count = accessibility.get('serious_count', 0)
+
+        # Determine color based on compliance
+        if 'Non-compliant' in wcag_level or critical_count > 0:
+            level_color = 'text-red-400'
+            border_color = 'border-red-500/30'
+        elif 'AA' in wcag_level and 'issues' not in wcag_level:
+            level_color = 'text-green-400'
+            border_color = 'border-green-500/30'
+        else:
+            level_color = 'text-yellow-400'
+            border_color = 'border-yellow-500/30'
+
+        html += f'''
+            <div class="bg-white/5 border {border_color} rounded-lg p-4">
+                <div class="flex items-center space-x-2 mb-3">
+                    <span class="text-2xl">♿</span>
+                    <h3 class="font-semibold text-white">Accessibility</h3>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">WCAG Compliance</span>
+                        <span class="{level_color} font-semibold">{wcag_level}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Total Violations</span>
+                        <span class="text-white font-semibold">{total_violations}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Critical Issues</span>
+                        <span class="text-red-400 font-semibold">{critical_count}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Serious Issues</span>
+                        <span class="text-orange-400 font-semibold">{serious_count}</span>
+                    </div>
+                </div>
+            </div>
+        '''
+
+    # Security Section
+    if security:
+        present = security.get('present', [])
+        missing = security.get('missing', [])
+        compliance_pct = security.get('compliance_percentage', 0)
+
+        # Determine color based on compliance
+        if compliance_pct >= 80:
+            compliance_color = 'text-green-400'
+            border_color = 'border-green-500/30'
+        elif compliance_pct >= 50:
+            compliance_color = 'text-yellow-400'
+            border_color = 'border-yellow-500/30'
+        else:
+            compliance_color = 'text-red-400'
+            border_color = 'border-red-500/30'
+
+        html += f'''
+            <div class="bg-white/5 border {border_color} rounded-lg p-4">
+                <div class="flex items-center space-x-2 mb-3">
+                    <span class="text-2xl">🔒</span>
+                    <h3 class="font-semibold text-white">Security Headers</h3>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Compliance</span>
+                        <span class="{compliance_color} font-semibold">{compliance_pct:.0f}%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Present Headers</span>
+                        <span class="text-green-400 font-semibold">{len(present)}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Missing Headers</span>
+                        <span class="text-red-400 font-semibold">{len(missing)}</span>
+                    </div>
+                    <div class="text-xs text-slate-500 mt-2">
+                        Missing: {', '.join(missing[:3]) if missing else 'None'}{'...' if len(missing) > 3 else ''}
+                    </div>
+                </div>
+            </div>
+        '''
+
+    # Performance Section
+    if performance:
+        scores = performance.get('scores', {})
+        perf_score = scores.get('performance', 0) * 100
+        accessibility_score = scores.get('accessibility', 0) * 100
+        best_practices_score = scores.get('bestPractices', 0) * 100
+        seo_score = scores.get('seo', 0) * 100
+        grade = performance.get('performanceGrade', 'Unknown')
+
+        # Determine color based on grade
+        if perf_score >= 90:
+            grade_color = 'text-green-400'
+            border_color = 'border-green-500/30'
+        elif perf_score >= 50:
+            grade_color = 'text-yellow-400'
+            border_color = 'border-yellow-500/30'
+        else:
+            grade_color = 'text-red-400'
+            border_color = 'border-red-500/30'
+
+        # Core Web Vitals
+        cwv = performance.get('coreWebVitals', {})
+        lcp = cwv.get('lcp', 0)
+        cls = cwv.get('cls', 0)
+        fcp = cwv.get('fcp', 0)
+
+        html += f'''
+            <div class="bg-white/5 border {border_color} rounded-lg p-4">
+                <div class="flex items-center space-x-2 mb-3">
+                    <span class="text-2xl">⚡</span>
+                    <h3 class="font-semibold text-white">Performance</h3>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Overall Grade</span>
+                        <span class="{grade_color} font-semibold">{grade}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Performance</span>
+                        <span class="text-white font-semibold">{perf_score:.0f}/100</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Best Practices</span>
+                        <span class="text-white font-semibold">{best_practices_score:.0f}/100</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">SEO</span>
+                        <span class="text-white font-semibold">{seo_score:.0f}/100</span>
+                    </div>
+                    <div class="text-xs text-slate-500 mt-2 space-y-1">
+                        <div>LCP: {lcp:.0f}ms | CLS: {cls:.3f}</div>
+                        <div>FCP: {fcp:.0f}ms</div>
+                    </div>
+                </div>
+            </div>
+        '''
+
+    html += '''
+        </div>
+    </section>
+    '''
+
+    return html
 
 
 def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> str:
@@ -769,6 +951,101 @@ def generate_screenshots_gallery(screenshots: List[Dict], screenshot_lookup: Dic
     """
 
     return html
+
+
+def generate_junit_xml(data: Dict, output_path: Path, project: Dict = None) -> str:
+    """Generate JUnit XML report for CI/CD integration.
+
+    JUnit XML format is compatible with:
+    - Jenkins
+    - GitLab CI
+    - GitHub Actions
+    - CircleCI
+    - Azure DevOps
+    - TeamCity
+    """
+    results = data.get('results', [])
+    project_name = project.get('name', 'AlphaTest') if project else 'AlphaTest'
+
+    # Calculate totals
+    total_tests = len(results)
+    failures = sum(1 for r in results if r.get('status') == 'failed')
+    errors = sum(1 for r in results if r.get('status') == 'incomplete')
+    skipped = 0
+
+    # Calculate total time (sum of all test durations)
+    total_time = sum(r.get('duration', 0) for r in results)
+
+    # Create root element
+    testsuite = ET.Element('testsuite', {
+        'name': project_name,
+        'tests': str(total_tests),
+        'failures': str(failures),
+        'errors': str(errors),
+        'skipped': str(skipped),
+        'time': f"{total_time:.2f}",
+        'timestamp': datetime.now().isoformat()
+    })
+
+    # Add test cases
+    for result in results:
+        test_name = result.get('spec_name', result.get('command', 'Unknown test'))
+        status = result.get('status', 'unknown')
+        duration = result.get('duration', 0)
+        steps = result.get('steps', [])
+
+        # Create testcase element
+        testcase = ET.SubElement(testsuite, 'testcase', {
+            'name': test_name,
+            'classname': f'{project_name}.UAT',
+            'time': f"{duration:.2f}"
+        })
+
+        # Add failure/error details
+        if status == 'failed':
+            failure = ET.SubElement(testcase, 'failure', {
+                'message': f'Test failed after {len(steps)} steps',
+                'type': 'AssertionError'
+            })
+
+            # Add failure details from steps
+            failure_details = []
+            for step in steps:
+                if not step.get('result', {}).get('success', True):
+                    step_num = step.get('step', 0)
+                    thinking = step.get('thinking', '')
+                    result_msg = step.get('result', {}).get('message', '')
+                    failure_details.append(f"Step {step_num}: {thinking}\nResult: {result_msg}")
+
+            failure.text = '\n\n'.join(failure_details) if failure_details else 'Test failed'
+
+        elif status == 'incomplete':
+            error = ET.SubElement(testcase, 'error', {
+                'message': f'Test incomplete after {len(steps)} steps',
+                'type': 'TestIncompleteError'
+            })
+            error.text = f'Test did not complete successfully. Last step: {len(steps)}'
+
+        # Add system-out with step details
+        system_out = ET.SubElement(testcase, 'system-out')
+        step_output = []
+        for step in steps:
+            step_num = step.get('step', 0)
+            thinking = step.get('thinking', '')
+            action = step.get('action', {})
+            action_type = action.get('type', 'analyze')
+            step_output.append(f"[Step {step_num}] {action_type}: {thinking[:100]}")
+
+        system_out.text = '\n'.join(step_output)
+
+    # Create tree and write to file
+    tree = ET.ElementTree(testsuite)
+    ET.indent(tree, space='  ')  # Pretty print (Python 3.9+)
+
+    output_path = Path(output_path)
+    tree.write(output_path, encoding='utf-8', xml_declaration=True)
+
+    return str(output_path)
 
 
 if __name__ == "__main__":
