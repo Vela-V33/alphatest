@@ -547,9 +547,19 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
             step_id = f"step-{test_idx}-{step_idx}"
             has_screenshots = bool(before_filename or after_filename)
 
+            # Build onclick handler without backslashes in f-string
+            if has_screenshots:
+                onclick_handler = f"toggleStep('{step_id}')"
+                expanded_class = ""
+                expand_icon_html = '<span class="expand-icon text-green-400">►</span>'
+            else:
+                onclick_handler = "return false"
+                expanded_class = "expanded"
+                expand_icon_html = ""
+
             html += f"""
-                    <div class="step-card {step_status} {'expanded' if not has_screenshots else ''}"
-                         onclick="{'toggleStep(\\'' + step_id + '\\')' if has_screenshots else 'return false'}">
+                    <div class="step-card {step_status} {expanded_class}"
+                         onclick="{onclick_handler}">
                         <div class="step-header">
                             <div class="flex items-start space-x-3 flex-1">
                                 <div class="timeline-dot {step_status} mt-1.5"></div>
@@ -562,7 +572,7 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
                                     {f'<p class="text-slate-500 text-xs mt-1">{action_desc}</p>' if action_desc else ''}
                                 </div>
                             </div>
-                            {f'<span class="expand-icon text-green-400">►</span>' if has_screenshots else ''}
+                            {expand_icon_html}
                         </div>
             """
 
