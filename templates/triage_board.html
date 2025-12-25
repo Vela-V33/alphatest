@@ -95,81 +95,121 @@
             <!-- New Column -->
             <div class="kanban-column">
                 <div class="kanban-column-header bg-blue-500/10 border-blue-500/30">
-                    <div class="flex items-center space-x-2">
-                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span class="font-semibold text-blue-400">New</span>
+                    <div class="flex items-center justify-between w-full">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span class="font-semibold text-blue-400">New</span>
+                        </div>
+                        <span class="kanban-count" id="count-new">0</span>
                     </div>
-                    <span class="kanban-count" id="count-new">0</span>
                 </div>
-                <div class="kanban-cards" id="column-new" data-status="new">
+                <div class="kanban-cards" id="column-new" data-status="new" data-max-visible="5">
                     <!-- Cards populated by JS -->
                 </div>
+                <button class="show-more-btn hidden" id="show-more-new" onclick="toggleShowMore('new')">
+                    <span id="show-more-text-new">Show More</span>
+                    <svg class="w-4 h-4" id="show-more-icon-new" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Investigating Column -->
             <div class="kanban-column">
                 <div class="kanban-column-header bg-purple-500/10 border-purple-500/30">
-                    <div class="flex items-center space-x-2">
-                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <span class="font-semibold text-purple-400">Investigating</span>
+                    <div class="flex items-center justify-between w-full">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <span class="font-semibold text-purple-400">Investigating</span>
+                        </div>
+                        <span class="kanban-count" id="count-investigating">0</span>
                     </div>
-                    <span class="kanban-count" id="count-investigating">0</span>
                 </div>
-                <div class="kanban-cards" id="column-investigating" data-status="investigating">
+                <div class="kanban-cards" id="column-investigating" data-status="investigating" data-max-visible="5">
                     <!-- Cards populated by JS -->
                 </div>
+                <button class="show-more-btn hidden" id="show-more-investigating" onclick="toggleShowMore('investigating')">
+                    <span id="show-more-text-investigating">Show More</span>
+                    <svg class="w-4 h-4" id="show-more-icon-investigating" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Confirmed Column -->
             <div class="kanban-column">
                 <div class="kanban-column-header bg-orange-500/10 border-orange-500/30">
-                    <div class="flex items-center space-x-2">
-                        <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <span class="font-semibold text-orange-400">Confirmed</span>
+                    <div class="flex items-center justify-between w-full">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span class="font-semibold text-orange-400">Confirmed</span>
+                        </div>
+                        <span class="kanban-count" id="count-confirmed">0</span>
                     </div>
-                    <span class="kanban-count" id="count-confirmed">0</span>
                 </div>
-                <div class="kanban-cards" id="column-confirmed" data-status="confirmed">
+                <div class="kanban-cards" id="column-confirmed" data-status="confirmed" data-max-visible="5">
                     <!-- Cards populated by JS -->
                 </div>
+                <button class="show-more-btn hidden" id="show-more-confirmed" onclick="toggleShowMore('confirmed')">
+                    <span id="show-more-text-confirmed">Show More</span>
+                    <svg class="w-4 h-4" id="show-more-icon-confirmed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Fixed Column -->
             <div class="kanban-column">
                 <div class="kanban-column-header bg-green-500/10 border-green-500/30">
-                    <div class="flex items-center space-x-2">
-                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span class="font-semibold text-green-400">Fixed</span>
+                    <div class="flex items-center justify-between w-full">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="font-semibold text-green-400">Fixed</span>
+                        </div>
+                        <span class="kanban-count" id="count-fixed">0</span>
                     </div>
-                    <span class="kanban-count" id="count-fixed">0</span>
                 </div>
-                <div class="kanban-cards" id="column-fixed" data-status="fixed">
+                <div class="kanban-cards" id="column-fixed" data-status="fixed" data-max-visible="5">
                     <!-- Cards populated by JS -->
                 </div>
+                <button class="show-more-btn hidden" id="show-more-fixed" onclick="toggleShowMore('fixed')">
+                    <span id="show-more-text-fixed">Show More</span>
+                    <svg class="w-4 h-4" id="show-more-icon-fixed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Closed Column -->
             <div class="kanban-column">
                 <div class="kanban-column-header bg-slate-500/10 border-slate-500/30">
-                    <div class="flex items-center space-x-2">
-                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span class="font-semibold text-slate-400">Closed</span>
+                    <div class="flex items-center justify-between w-full">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span class="font-semibold text-slate-400">Closed</span>
+                        </div>
+                        <span class="kanban-count" id="count-closed">0</span>
                     </div>
-                    <span class="kanban-count" id="count-closed">0</span>
                 </div>
-                <div class="kanban-cards" id="column-closed" data-status="closed">
+                <div class="kanban-cards" id="column-closed" data-status="closed" data-max-visible="5">
                     <!-- Cards populated by JS -->
                 </div>
+                <button class="show-more-btn hidden" id="show-more-closed" onclick="toggleShowMore('closed')">
+                    <span id="show-more-text-closed">Show More</span>
+                    <svg class="w-4 h-4" id="show-more-icon-closed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
             </div>
         </div>
 
@@ -246,6 +286,30 @@
         .priority-high { border-left: 3px solid rgb(249, 115, 22); }
         .priority-medium { border-left: 3px solid rgb(251, 191, 36); }
         .priority-low { border-left: 3px solid rgb(148, 163, 184); }
+
+        .show-more-btn {
+            width: 100%;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.375rem;
+            color: rgba(148, 163, 184, 1);
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            transition: all 0.2s;
+        }
+        .show-more-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 1);
+        }
+        .issue-card.collapsed {
+            display: none;
+        }
     </style>
 
     <script>
@@ -317,8 +381,28 @@
         function updateCounts() {
             ['new', 'investigating', 'confirmed', 'fixed', 'closed'].forEach(status => {
                 const column = document.getElementById(`column-${status}`);
-                const count = column.children.length;
+                const cards = Array.from(column.children);
+                const count = cards.length;
+                const maxVisible = parseInt(column.dataset.maxVisible) || 5;
+
                 document.getElementById(`count-${status}`).textContent = count;
+
+                // Show/hide show-more button and apply collapsed class
+                const showMoreBtn = document.getElementById(`show-more-${status}`);
+                if (count > maxVisible) {
+                    showMoreBtn.classList.remove('hidden');
+                    // Initially collapse cards beyond maxVisible
+                    cards.forEach((card, index) => {
+                        if (index >= maxVisible) {
+                            card.classList.add('collapsed');
+                        } else {
+                            card.classList.remove('collapsed');
+                        }
+                    });
+                } else {
+                    showMoreBtn.classList.add('hidden');
+                    cards.forEach(card => card.classList.remove('collapsed'));
+                }
             });
 
             // Update summary counts
@@ -331,6 +415,34 @@
             const resolvedCount = document.getElementById('column-fixed').children.length +
                                  document.getElementById('column-closed').children.length;
             document.getElementById('resolvedCount').textContent = resolvedCount;
+        }
+
+        // Toggle show more/less for columns
+        function toggleShowMore(status) {
+            const column = document.getElementById(`column-${status}`);
+            const cards = Array.from(column.children);
+            const maxVisible = parseInt(column.dataset.maxVisible) || 5;
+            const showMoreBtn = document.getElementById(`show-more-${status}`);
+            const showMoreText = document.getElementById(`show-more-text-${status}`);
+            const showMoreIcon = document.getElementById(`show-more-icon-${status}`);
+
+            const isExpanded = cards.some((card, index) => index >= maxVisible && !card.classList.contains('collapsed'));
+
+            if (isExpanded) {
+                // Collapse
+                cards.forEach((card, index) => {
+                    if (index >= maxVisible) {
+                        card.classList.add('collapsed');
+                    }
+                });
+                showMoreText.textContent = 'Show More';
+                showMoreIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />';
+            } else {
+                // Expand
+                cards.forEach(card => card.classList.remove('collapsed'));
+                showMoreText.textContent = 'Show Less';
+                showMoreIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />';
+            }
         }
 
         // Initialize drag and drop

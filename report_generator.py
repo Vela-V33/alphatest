@@ -387,14 +387,14 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             <div class="container mx-auto px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <a href="/projects/{project_id}" class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+                        <a href="/project/{project_id}" class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
                             <span class="text-sm font-medium">Back to Project</span>
                         </a>
                         <span class="text-slate-600">|</span>
-                        <a href="/projects" class="text-sm text-slate-400 hover:text-white transition-colors">All Projects</a>
+                        <a href="/dashboard" class="text-sm text-slate-400 hover:text-white transition-colors">All Projects</a>
                     </div>
                     <div class="flex items-center space-x-3">
                         <button onclick="window.print()" class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
