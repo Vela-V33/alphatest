@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quality Pulse - {{ project.name }} - AlphaTest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body class="bg-slate-950 text-white" style="font-family: 'Montserrat', sans-serif;">
+
+    <!-- Header -->
+    <header class="header-glass">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/project/{{ project.id }}" class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        <span class="text-sm font-medium">{{ project.name }}</span>
+                    </a>
+                    <div class="w-px h-6 bg-white/20"></div>
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                        <h1 class="text-xl font-bold text-white">Quality Pulse</h1>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <a href="/project/{{ project.id }}/reports" class="text-sm text-slate-400 hover:text-white transition-colors">Documents</a>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-sm text-emerald-400 font-medium">Dashboard</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+
+        {% if reports|length == 0 %}
+        <!-- Empty State -->
+        <div class="glass-card p-12 text-center">
+            <svg class="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <h2 class="text-xl font-bold text-white mb-2">No Quality Data Yet</h2>
+            <p class="text-slate-400 mb-6">Run tests to see quality trends and insights</p>
+            <a href="/project/{{ project.id }}" class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-colors">
+                <span>Run Your First Test</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+            </a>
+        </div>
+        {% else %}
+
+        <!-- Key Metrics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <!-- Total Test Runs -->
+            <div class="glass-card p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Test Runs</h3>
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </div>
+                <div class="text-3xl font-bold text-white">{{ reports|length }}</div>
+                <p class="text-xs text-slate-500 mt-1">All time</p>
+            </div>
+
+            <!-- Pass Rate -->
+            <div class="glass-card p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Pass Rate</h3>
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="text-3xl font-bold text-green-400" id="passRate">--</div>
+                <p class="text-xs text-slate-500 mt-1">Last 10 runs</p>
+            </div>
+
+            <!-- Active Issues -->
+            <div class="glass-card p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Active Issues</h3>
+                    <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div class="text-3xl font-bold text-yellow-400">{{ trend_data.active_issues }}</div>
+                <p class="text-xs text-slate-500 mt-1">Currently tracked</p>
+            </div>
+
+            <!-- Regressions -->
+            <div class="glass-card p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Regressions</h3>
+                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                    </svg>
+                </div>
+                <div class="text-3xl font-bold text-red-400">{{ trend_data.regressed_issues }}</div>
+                <p class="text-xs text-slate-500 mt-1">Issues returned</p>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Test Pass/Fail Trend -->
+            <div class="glass-card p-6">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span>Test Results Trend</span>
+                </h3>
+                <canvas id="testTrendChart" class="w-full" style="max-height: 300px;"></canvas>
+            </div>
+
+            <!-- Issue Trend -->
+            <div class="glass-card p-6">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Issue Volume Trend</span>
+                </h3>
+                <canvas id="issueTrendChart" class="w-full" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Top Recurring Issues -->
+        {% if trend_data.top_recurring_issues|length > 0 %}
+        <div class="glass-card p-6 mb-8">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+                <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Most Frequent Issues</span>
+            </h3>
+            <div class="space-y-3">
+                {% for issue in trend_data.top_recurring_issues[:5] %}
+                <div class="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-1">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-500/10 border border-orange-500/30 text-orange-400">
+                                    {{ issue.type }}
+                                </span>
+                                {% if issue.status == 'regressed' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-500/10 border border-red-500/30 text-red-400">
+                                    REGRESSED
+                                </span>
+                                {% elif issue.status == 'active' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
+                                    ACTIVE
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 border border-green-500/30 text-green-400">
+                                    FIXED
+                                </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-white font-medium">{{ issue.message }}</p>
+                            <p class="text-slate-500 text-sm mt-1">First seen: {{ issue.first_seen[:10] if issue.first_seen else 'Unknown' }}</p>
+                        </div>
+                        <div class="text-right ml-4">
+                            <div class="text-2xl font-bold text-white">{{ issue.seen_count }}</div>
+                            <div class="text-xs text-slate-500">occurrences</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quality Insights -->
+        <div class="glass-card p-6">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Insights</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="insights">
+                <!-- Dynamically generated insights -->
+            </div>
+        </div>
+
+        {% endif %}
+    </main>
+
+    <script>
+        // Data from backend
+        const reports = {{ reports|tojson }};
+        const trendData = {{ trend_data|tojson }};
+
+        // Calculate pass rate
+        const recentReports = reports.slice(-10);
+        const totalTests = recentReports.reduce((sum, r) => sum + (r.summary.total || 0), 0);
+        const passedTests = recentReports.reduce((sum, r) => sum + (r.summary.passed || 0), 0);
+        const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : 0;
+        document.getElementById('passRate').textContent = passRate + '%';
+
+        // Test Results Trend Chart
+        const testLabels = reports.slice(-10).map((r, i) => `Run ${i + 1}`);
+        const passedData = reports.slice(-10).map(r => r.summary.passed || 0);
+        const failedData = reports.slice(-10).map(r => r.summary.failed || 0);
+
+        new Chart(document.getElementById('testTrendChart'), {
+            type: 'line',
+            data: {
+                labels: testLabels,
+                datasets: [
+                    {
+                        label: 'Passed',
+                        data: passedData,
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Failed',
+                        data: failedData,
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: 'rgb(148, 163, 184)' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: 'rgb(148, 163, 184)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: 'rgb(148, 163, 184)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                }
+            }
+        });
+
+        // Issue Volume Trend Chart
+        const issueData = reports.slice(-10).map(r => r.summary.issues || 0);
+
+        new Chart(document.getElementById('issueTrendChart'), {
+            type: 'bar',
+            data: {
+                labels: testLabels,
+                datasets: [{
+                    label: 'Issues Found',
+                    data: issueData,
+                    backgroundColor: 'rgba(251, 191, 36, 0.5)',
+                    borderColor: 'rgb(251, 191, 36)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: 'rgb(148, 163, 184)' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: 'rgb(148, 163, 184)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: 'rgb(148, 163, 184)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                }
+            }
+        });
+
+        // Generate insights
+        const insightsContainer = document.getElementById('insights');
+        const insights = [];
+
+        // Insight 1: Quality trend
+        const recentIssues = reports.slice(-3).reduce((sum, r) => sum + (r.summary.issues || 0), 0);
+        const olderIssues = reports.slice(-6, -3).reduce((sum, r) => sum + (r.summary.issues || 0), 0);
+        if (recentIssues < olderIssues) {
+            insights.push({
+                type: 'positive',
+                icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
+                message: 'Quality improving - fewer issues in recent runs'
+            });
+        } else if (recentIssues > olderIssues) {
+            insights.push({
+                type: 'negative',
+                icon: 'M13 17h8m0 0V9m0 8l-8-8-4 4-6-6',
+                message: 'Quality declining - more issues detected recently'
+            });
+        }
+
+        // Insight 2: Regression alert
+        if (trendData.regressed_issues > 0) {
+            insights.push({
+                type: 'warning',
+                icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+                message: `${trendData.regressed_issues} previously fixed issue${trendData.regressed_issues > 1 ? 's have' : ' has'} returned`
+            });
+        }
+
+        // Insight 3: Fixed issues
+        if (trendData.fixed_issues > 0) {
+            insights.push({
+                type: 'positive',
+                icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                message: `${trendData.fixed_issues} issue${trendData.fixed_issues > 1 ? 's' : ''} resolved since last run`
+            });
+        }
+
+        // Render insights
+        insights.forEach(insight => {
+            const colorClass = insight.type === 'positive' ? 'text-green-400 bg-green-500/10 border-green-500/30' :
+                              insight.type === 'negative' ? 'text-red-400 bg-red-500/10 border-red-500/30' :
+                              'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
+
+            insightsContainer.innerHTML += `
+                <div class="bg-white/5 border border-white/10 rounded-lg p-4">
+                    <div class="flex items-start space-x-3">
+                        <svg class="w-5 h-5 ${colorClass.split(' ')[0]} flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${insight.icon}" />
+                        </svg>
+                        <p class="text-sm text-slate-300">${insight.message}</p>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (insights.length === 0) {
+            insightsContainer.innerHTML = '<p class="text-slate-500 text-sm col-span-3">Run more tests to generate insights</p>';
+        }
+    </script>
+
+</body>
+</html>

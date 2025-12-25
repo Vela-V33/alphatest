@@ -372,6 +372,41 @@ def project_reports(project_id):
     
     return render_template('reports.html', project=project, reports=reports)
 
+@app.route('/project/<project_id>/pulse')
+def project_pulse_dashboard(project_id):
+    """Show quality trends dashboard for a project."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return "Project not found", 404
+
+    # Get historical reports for trend analysis
+    project_reports_dir = REPORTS_DIR / project_id
+    reports_data = []
+    if project_reports_dir.exists():
+        for report_dir in sorted(project_reports_dir.iterdir(), reverse=False):  # Chronological order
+            if report_dir.is_dir():
+                report_file = report_dir / "report.json"
+                if report_file.exists():
+                    try:
+                        report_data = json.loads(report_file.read_text())
+                        reports_data.append({
+                            'id': report_dir.name,
+                            'date': report_data.get('date', ''),
+                            'summary': report_data.get('summary', {}),
+                        })
+                    except:
+                        pass
+
+    # Get issue tracking trend data
+    tracker = IssueTracker(project_reports_dir)
+    trend_data = tracker.get_trend_data(limit=10)
+
+    return render_template('pulse_dashboard.html',
+                          project=project,
+                          reports=reports_data,
+                          trend_data=trend_data)
+
 @app.route('/reports/<project_id>/<report_id>')
 def view_report(project_id, report_id):
     """View a specific report."""
