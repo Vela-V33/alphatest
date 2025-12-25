@@ -909,8 +909,22 @@ def handle_test(data):
                 # Run the test
                 result = await agent.run_command(command)
 
-                # Generate report
+                # Run compliance scans after test
+                socketio.emit('test_progress', {'message': '🔍 Running compliance scans...'})
+
+                # Get current response for security headers
+                response = await agent.page.goto(agent.page.url, wait_until='domcontentloaded')
+
+                # Run all scans
+                accessibility_results = await agent.run_accessibility_scan()
+                security_results = await agent.check_security_headers(response)
+                performance_results = await agent.run_lighthouse_audit()
+
+                # Generate report with scan data
                 report_data = agent.get_report_data()
+                report_data['accessibility_results'] = accessibility_results
+                report_data['security_results'] = security_results
+                report_data['performance_results'] = performance_results
                 report_path = generate_report(report_data, report_dir, project)
 
                 socketio.emit('test_complete', {
@@ -991,9 +1005,23 @@ def handle_run_spec(data):
                     results.append(result)
                     socketio.emit('spec_complete', {'spec': spec, 'result': result})
 
-                # Generate report
+                # Run compliance scans after all tests
+                socketio.emit('test_progress', {'message': '🔍 Running compliance scans...'})
+
+                # Get current response for security headers
+                response = await agent.page.goto(agent.page.url, wait_until='domcontentloaded')
+
+                # Run all scans
+                accessibility_results = await agent.run_accessibility_scan()
+                security_results = await agent.check_security_headers(response)
+                performance_results = await agent.run_lighthouse_audit()
+
+                # Generate report with scan data
                 report_data = agent.get_report_data()
                 report_data['specs_results'] = results
+                report_data['accessibility_results'] = accessibility_results
+                report_data['security_results'] = security_results
+                report_data['performance_results'] = performance_results
                 report_path = generate_report(report_data, report_dir, project)
                 
                 socketio.emit('all_specs_complete', {
