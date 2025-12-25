@@ -451,18 +451,22 @@ def project_triage_board(project_id):
                           issues=all_issues)
 
 @app.route('/reports/<project_id>/<report_id>')
+@app.route('/reports/<project_id>/<report_id>/report.html')
 def view_report(project_id, report_id):
     """View a specific report."""
     report_dir = REPORTS_DIR / project_id / report_id
     report_file = report_dir / "report.html"
     if report_file.exists():
-        return report_file.read_text()
+        return send_from_directory(report_dir, "report.html")
     return "Report not found", 404
 
 @app.route('/reports/<project_id>/<report_id>/screenshots/<filename>')
 def report_screenshot(project_id, report_id, filename):
     """Serve report screenshots."""
-    return send_from_directory(REPORTS_DIR / project_id / report_id / "screenshots", filename)
+    screenshot_dir = REPORTS_DIR / project_id / report_id / "screenshots"
+    if not screenshot_dir.exists():
+        return "Screenshots directory not found", 404
+    return send_from_directory(screenshot_dir, filename)
 
 @app.route('/project/<project_id>/specs', methods=['GET', 'POST'])
 def manage_specs(project_id):

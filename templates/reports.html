@@ -87,7 +87,7 @@
                         {% for report in reports %}
                         <tr class="hover:bg-white/5 transition-colors cursor-pointer report-row"
                             data-outcome="{{ 'passed' if report.summary.failed == 0 else 'failed' }}"
-                            onclick="window.location.href='/reports/{{ project.id }}/{{ report.id }}/report.html'">
+                            onclick="window.location.href='/reports/{{ project.id }}/{{ report.id }}'">
                             <td class="px-6 py-4">
                                 <div class="flex items-center space-x-3">
                                     <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +140,7 @@
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end space-x-2">
-                                    <a href="/reports/{{ project.id }}/{{ report.id }}/report.html" class="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-medium transition-colors" onclick="event.stopPropagation()">
+                                    <a href="/reports/{{ project.id }}/{{ report.id }}" class="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-medium transition-colors" onclick="event.stopPropagation()">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -165,7 +165,7 @@
                 {% for report in reports %}
                 <div class="glass-card p-6 hover:border-emerald-500/30 transition-all cursor-pointer report-card"
                      data-outcome="{{ 'passed' if report.summary.failed == 0 else 'failed' }}"
-                     onclick="window.location.href='/reports/{{ project.id }}/{{ report.id }}/report.html'">
+                     onclick="window.location.href='/reports/{{ project.id }}/{{ report.id }}'">
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center space-x-3">
                             <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,7 +214,7 @@
                     </div>
                     {% endif %}
                     <div class="flex items-center space-x-2">
-                        <a href="/reports/{{ project.id }}/{{ report.id }}/report.html" class="flex-1 inline-flex items-center justify-center space-x-1 px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-medium transition-colors" onclick="event.stopPropagation()">
+                        <a href="/reports/{{ project.id }}/{{ report.id }}" class="flex-1 inline-flex items-center justify-center space-x-1 px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-medium transition-colors" onclick="event.stopPropagation()">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -325,7 +325,7 @@
 
         // Share functionality
         function shareReport(reportId) {
-            const url = `${window.location.origin}/reports/{{ project.id }}/${reportId}/report.html`;
+            const url = `${window.location.origin}/reports/{{ project.id }}/${reportId}`;
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(url).then(() => {
                     alert('Report URL copied to clipboard!');
