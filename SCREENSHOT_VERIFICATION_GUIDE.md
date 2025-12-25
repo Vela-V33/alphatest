@@ -1,5 +1,94 @@
 # Screenshot Feature Verification Guide
 
+**CRITICAL UPDATE**: Enhanced debugging and path normalization added as of latest commit.
+
+## Recent Improvements (Latest Deployment)
+
+If screenshots weren't appearing before, the following fixes have been applied:
+
+1. **Path Normalization**: Screenshot lookup now tries multiple path formats (original, Path object, resolved absolute)
+2. **Comprehensive Debugging**: Detailed console output shows exact data flow and path matching
+3. **Better Error Detection**: Warnings now show available paths when lookup fails
+
+After updating to the latest version, you should see extensive debug output that will help identify the exact issue.
+
+### How to Update Your Deployment
+
+```bash
+# Pull latest changes
+cd ~/alphatest
+git pull origin claude/setup-public-website-GjkNy
+
+# Redeploy to Cloud Run (same command as before)
+gcloud run deploy alphatest \
+  --source . \
+  --region us-central1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --memory 2Gi \
+  --cpu 2 \
+  --timeout 3600 \
+  --concurrency 80 \
+  --max-instances 10 \
+  --env-vars-file env.yaml \
+  --project alphatest-482117
+```
+
+### What to Look For in Debug Output
+
+When you run a test, you should now see:
+
+```
+[DEBUG] ===== REPORT GENERATION STARTED =====
+[DEBUG] Data keys: ['results', 'issues', 'screenshots', 'steps', ...]
+[DEBUG] Results count: 1
+[DEBUG] Screenshots count: 6
+[DEBUG] First result keys: ['command', 'status', 'steps', ...]
+[DEBUG] First result has steps: True
+[DEBUG] First result steps count: 3
+[DEBUG] First step structure: ['step', 'timestamp', 'thinking', 'action', 'result', 'screenshot_before', 'screenshot_after']
+
+[DEBUG] ===== SCREENSHOT PROCESSING =====
+[DEBUG] Total screenshots in data: 6
+[DEBUG] Total results in data: 1
+[DEBUG] ✓ Copied screenshot: 001_step_1_before.png
+[DEBUG]   - Registered paths: /app/reports/.../001_step_1_before.png, /app/reports/.../001_step_1_before.png
+[DEBUG] ✓ Copied screenshot: 002_step_1_after.png
+[DEBUG]   - Registered paths: /app/reports/.../002_step_1_after.png, /app/reports/.../002_step_1_after.png
+...
+[DEBUG] Total screenshots copied: 18
+[DEBUG] Screenshot lookup keys (first 3): ['/app/reports/.../001_step_1_before.png', ...]
+
+[DEBUG] ===== TEST RESULTS HTML GENERATION =====
+[DEBUG] Number of test results: 1
+[DEBUG] Screenshot lookup has 18 entries
+[DEBUG] Test 1: Navigate to homepage
+[DEBUG]   - Status: passed
+[DEBUG]   - Steps: 3
+[DEBUG]   - First step keys: ['step', 'timestamp', 'thinking', 'action', 'result', 'screenshot_before', 'screenshot_after']
+[DEBUG]   - First step has screenshot_before: True
+[DEBUG]   - First step has screenshot_after: True
+[DEBUG]   Step 1: before=True, after=True
+[DEBUG]     - Before path from step: /app/reports/.../001_step_1_before.png
+[DEBUG]     - Before filename resolved: 001_step_1_before.png
+[DEBUG]     - After path from step: /app/reports/.../002_step_1_after.png
+[DEBUG]     - After filename resolved: 002_step_1_after.png
+```
+
+**KEY INDICATORS**:
+- ✅ `Screenshots count: > 0` - Screenshots were captured
+- ✅ `Total screenshots copied: > 0` - Screenshots were processed
+- ✅ `First step has screenshot_before: True` - Step data has screenshot fields
+- ✅ `Before filename resolved: <filename>` - Path lookup succeeded
+
+**PROBLEM INDICATORS**:
+- ❌ `Screenshots count: 0` - No screenshots captured (browser/Playwright issue)
+- ❌ `Total screenshots copied: 0` - Screenshots captured but files not found
+- ❌ `First step has screenshot_before: False` - Screenshot fields not set on steps
+- ❌ `Before screenshot NOT FOUND in lookup!` - Path format mismatch (now should be fixed)
+
+---
+
 ## What Screenshot Features SHOULD Work
 
 AlphaTest has comprehensive screenshot features built into test reports:
