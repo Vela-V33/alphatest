@@ -361,14 +361,48 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
                         <p class="text-slate-400 text-sm">Generated</p>
                         <p class="font-semibold text-white">{datetime.now().strftime('%B %d, %Y')}</p>
                         <p class="text-slate-400 text-sm">{datetime.now().strftime('%I:%M %p')}</p>
-                        <button onclick="downloadPDF()" class="btn-primary mt-4 no-print flex items-center space-x-2">
-                            <span>📄</span>
+                        <button onclick="downloadPDF()" class="btn-primary mt-4 no-print inline-flex items-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                            </svg>
                             <span>Download PDF</span>
                         </button>
                     </div>
                 </div>
             </div>
         </header>
+
+        <!-- Navigation Actions Bar -->
+        <nav class="border-b border-white/10 bg-slate-900/50 backdrop-blur-sm no-print">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="/projects/{project_id}" class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            <span class="text-sm font-medium">Back to Project</span>
+                        </a>
+                        <span class="text-slate-600">|</span>
+                        <a href="/projects" class="text-sm text-slate-400 hover:text-white transition-colors">All Projects</a>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="window.print()" class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <span class="text-sm font-medium">Print</span>
+                        </button>
+                        <button onclick="shareReport()" class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                            <span class="text-sm font-medium">Share Report</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
 
         <main class="container mx-auto px-6 py-8">
             <!-- Summary Cards -->
@@ -451,6 +485,19 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
         document.addEventListener('keydown', (e) => {{
             if (e.key === 'Escape') closeModal();
         }});
+
+        function shareReport() {{
+            const url = window.location.href;
+            if (navigator.clipboard) {{
+                navigator.clipboard.writeText(url).then(() => {{
+                    alert('Report URL copied to clipboard!');
+                }}).catch(() => {{
+                    prompt('Copy this URL to share:', url);
+                }});
+            }} else {{
+                prompt('Copy this URL to share:', url);
+            }}
+        }}
 
         function downloadPDF() {{
             const element = document.getElementById('report-content');
