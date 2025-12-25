@@ -191,9 +191,7 @@ def generate_acceptance_criteria():
 
 @app.route('/')
 def home():
-    """Landing page - redirect to dashboard if logged in."""
-    if 'user_id' in session:
-        return redirect('/dashboard')
+    """Landing page - always show for public access."""
     return render_template('landing.html')
 
 @app.route('/dashboard')
