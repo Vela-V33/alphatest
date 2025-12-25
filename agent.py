@@ -11,6 +11,8 @@ import asyncio
 import json
 import base64
 import re
+import random
+import string
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Callable
@@ -169,6 +171,89 @@ class AlphaTestAgent:
             return metrics
         except:
             return {}
+
+    def generate_fake_data(self, field_type: str, field_name: str = "") -> str:
+        """Generate realistic fake data for form filling."""
+        field_name_lower = field_name.lower()
+
+        # Email
+        if 'email' in field_name_lower or field_type == 'email':
+            username = ''.join(random.choices(string.ascii_lowercase, k=8))
+            domains = ['test.com', 'example.com', 'demo.org', 'sample.net']
+            return f"{username}@{random.choice(domains)}"
+
+        # Phone
+        if 'phone' in field_name_lower or 'tel' in field_name_lower:
+            return f"+1{random.randint(2000000000, 9999999999)}"
+
+        # Name
+        if 'first' in field_name_lower and 'name' in field_name_lower:
+            first_names = ['Alex', 'Sam', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Avery']
+            return random.choice(first_names)
+
+        if 'last' in field_name_lower and 'name' in field_name_lower:
+            last_names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis']
+            return random.choice(last_names)
+
+        if 'name' in field_name_lower and 'user' not in field_name_lower:
+            first = ['Alex', 'Sam', 'Jordan', 'Taylor'][random.randint(0, 3)]
+            last = ['Smith', 'Johnson', 'Williams', 'Brown'][random.randint(0, 3)]
+            return f"{first} {last}"
+
+        # Username
+        if 'user' in field_name_lower:
+            return f"user{random.randint(1000, 9999)}"
+
+        # Password
+        if 'password' in field_name_lower or field_type == 'password':
+            return "TestPass123!"
+
+        # Address
+        if 'address' in field_name_lower or 'street' in field_name_lower:
+            num = random.randint(100, 9999)
+            streets = ['Main St', 'Oak Ave', 'Maple Dr', 'Park Blvd', 'River Rd']
+            return f"{num} {random.choice(streets)}"
+
+        if 'city' in field_name_lower:
+            cities = ['San Francisco', 'New York', 'Chicago', 'Austin', 'Seattle']
+            return random.choice(cities)
+
+        if 'state' in field_name_lower:
+            states = ['CA', 'NY', 'TX', 'WA', 'IL']
+            return random.choice(states)
+
+        if 'zip' in field_name_lower or 'postal' in field_name_lower:
+            return f"{random.randint(10000, 99999)}"
+
+        if 'country' in field_name_lower:
+            return 'United States'
+
+        # Company
+        if 'company' in field_name_lower or 'organization' in field_name_lower:
+            companies = ['Acme Corp', 'Test Industries', 'Demo LLC', 'Sample Inc']
+            return random.choice(companies)
+
+        # Title/Job
+        if 'title' in field_name_lower or 'job' in field_name_lower:
+            titles = ['Software Engineer', 'Product Manager', 'Designer', 'Analyst']
+            return random.choice(titles)
+
+        # Date
+        if 'date' in field_name_lower or 'birth' in field_name_lower:
+            year = random.randint(1970, 2005)
+            month = random.randint(1, 12)
+            day = random.randint(1, 28)
+            return f"{year:04d}-{month:02d}-{day:02d}"
+
+        # Number fields
+        if field_type == 'number' or 'age' in field_name_lower:
+            return str(random.randint(18, 65))
+
+        if 'quantity' in field_name_lower or 'amount' in field_name_lower:
+            return str(random.randint(1, 10))
+
+        # Default text
+        return f"Test Data {random.randint(100, 999)}"
 
     async def wait_for_stable(self, timeout: int = 5000):
         """Wait for page to be stable (no loading, animations complete)."""
@@ -988,15 +1073,19 @@ Based on the screenshot and elements, what's the next action?"""
             }
     
     async def run_command(
-        self, 
-        command: str, 
-        max_steps: int = 15,
-        acceptance_criteria: List[Dict] = None
+        self,
+        command: str,
+        max_steps: int = 25,
+        acceptance_criteria: List[Dict] = None,
+        continue_callback = None
     ) -> Dict:
         """Run a natural language test command with acceptance criteria."""
         self.status(f"🧪 Testing: {command}")
         self.current_test = command
-        
+
+        # Track completed actions to prevent duplicates
+        self.completed_actions = []
+
         result = {
             'command': command,
             'status': 'running',
@@ -1004,11 +1093,12 @@ Based on the screenshot and elements, what's the next action?"""
             'acceptance_criteria': acceptance_criteria or [],
             'start_time': datetime.now().isoformat()
         }
-        
+
         # Take initial screenshot
         await self.screenshot("test_start", {'phase': 'start', 'command': command})
-        
-        for step_num in range(max_steps):
+
+        step_num = 0
+        while step_num < max_steps:
             step_data = {
                 'step': step_num + 1,
                 'timestamp': datetime.now().isoformat()
@@ -1045,44 +1135,57 @@ Based on the screenshot and elements, what's the next action?"""
                 step_data['result'] = {'success': True, 'message': 'Task completed'}
                 result['steps'].append(step_data)
                 break
-            
+
             # Execute action
             if action.get('type') and action['type'] not in ['done', 'unknown']:
+                # Check if this action was already performed to prevent loops
+                action_signature = f"{action.get('type')}:{action.get('selector', '')}:{action.get('text', '')}"
+                if action_signature in self.completed_actions:
+                    self.status(f"   ⚠️  Skipping duplicate action")
+                    step_data['result'] = {'success': False, 'message': 'Duplicate action skipped', 'action': action}
+                    result['steps'].append(step_data)
+                    step_num += 1
+                    continue
+
                 # Screenshot before action
                 before_shot = await self.screenshot(
-                    f"step_{step_num + 1}_before", 
+                    f"step_{step_num + 1}_before",
                     {'phase': 'before', 'action': action}
                 )
                 step_data['screenshot_before'] = before_shot
-                
+
                 # Execute
                 action_result = await self.execute_action(action)
                 step_data['result'] = action_result
-                
+
+                # Track successful actions to prevent duplicates
                 if action_result['success']:
+                    self.completed_actions.append(action_signature)
                     self.status(f"   ✓ {action_result['message']}")
                 else:
                     self.status(f"   ✗ {action_result['message']}")
-                
-                # Screenshot after action
-                await asyncio.sleep(0.5)
+
+                # Screenshot after action (faster wait)
+                await asyncio.sleep(0.3)
                 after_shot = await self.screenshot(
                     f"step_{step_num + 1}_after",
                     {'phase': 'after', 'action': action, 'result': action_result}
                 )
                 step_data['screenshot_after'] = after_shot
-            
+
             result['steps'].append(step_data)
-        
-        else:
-            result['status'] = 'incomplete'
-            self.status("⚠️ Max steps reached - test incomplete")
-            await self.screenshot("test_incomplete", {'phase': 'incomplete'})
-        
+            step_num += 1
+
+        # Check if we hit max steps without completing
+        if result['status'] == 'running':
+            result['status'] = 'needs_continuation'
+            self.status("⏸️  Paused at max steps - User can continue")
+            await self.screenshot("test_paused", {'phase': 'paused'})
+
         result['end_time'] = datetime.now().isoformat()
         result['issues_found'] = len(self.issues)
         self.results.append(result)
-        
+
         return result
     
     def get_report_data(self) -> Dict:
