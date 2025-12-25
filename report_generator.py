@@ -41,6 +41,7 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
 
     # Build screenshot lookup by filename
     screenshot_lookup = {}
+    screenshot_filename_map = {}  # Map just filename to filename for easier lookup
     print(f"\n[DEBUG] ===== SCREENSHOT PROCESSING =====")
     print(f"[DEBUG] Total screenshots in data: {len(data.get('screenshots', []))}")
     print(f"[DEBUG] Total results in data: {len(data.get('results', []))}")
@@ -52,18 +53,27 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             continue
 
         src = Path(src_path)
-        if src.exists():
+        # Check if file exists, or if it's already in the output directory
+        if src.exists() or (screenshots_dir / src.name).exists():
             dst = screenshots_dir / src.name
             try:
-                shutil.copy(src, dst)
+                # Only copy if source exists and is different from destination
+                if src.exists() and src.resolve() != dst.resolve():
+                    shutil.copy(src, dst)
+                elif (screenshots_dir / src.name).exists():
+                    # File already in correct location
+                    dst = screenshots_dir / src.name
+
                 # Store multiple path variations to ensure matching
                 screenshot_lookup[src_path] = src.name  # Original path
                 screenshot_lookup[str(src)] = src.name  # Path object as string
                 screenshot_lookup[str(src.resolve())] = src.name  # Absolute resolved path
-                print(f"[DEBUG] ✓ Copied screenshot: {src.name}")
-                print(f"[DEBUG]   - Registered paths: {src_path}, {str(src)}")
+                screenshot_lookup[src.name] = src.name  # Just filename
+                screenshot_filename_map[src.name] = src.name
+                print(f"[DEBUG] ✓ Registered screenshot: {src.name}")
+                print(f"[DEBUG]   - Paths: {src_path}, {str(src)}, {src.name}")
             except Exception as e:
-                print(f"[WARNING] Failed to copy screenshot {src}: {e}")
+                print(f"[WARNING] Failed to process screenshot {src}: {e}")
         else:
             print(f"[WARNING] Screenshot file not found: {src} (from path: {src_path})")
 
@@ -502,7 +512,20 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             }}
         }}
 
-        function downloadPDF() {{
+        async function waitForImagesToLoad() {{
+            const images = Array.from(document.querySelectorAll('img'));
+            const promises = images.map(img => {{
+                if (img.complete) return Promise.resolve();
+                return new Promise((resolve, reject) => {{
+                    img.onload = resolve;
+                    img.onerror = resolve; // Resolve even on error to avoid blocking
+                    setTimeout(resolve, 3000); // Timeout after 3 seconds
+                }});
+            }});
+            return Promise.all(promises);
+        }}
+
+        async function downloadPDF() {{
             const element = document.getElementById('report-content');
 
             // Expand all step screenshots before PDF generation
@@ -511,6 +534,11 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
             allStepScreenshots.forEach(ss => ss.classList.add('active'));
             allStepCards.forEach(card => card.classList.add('expanded'));
 
+            // Wait for all images to load
+            await waitForImagesToLoad();
+            // Additional wait for rendering
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             const opt = {{
                 margin: [10, 10],
                 filename: 'alphatest-report-{output_dir.name}.pdf',
@@ -518,7 +546,9 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
                 html2canvas: {{
                     scale: 2,
                     useCORS: true,
-                    logging: false
+                    logging: false,
+                    allowTaint: true,
+                    foreignObjectRendering: false
                 }},
                 jsPDF: {{
                     unit: 'mm',
@@ -849,6 +879,17 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
                         before_filename = screenshot_lookup.get(str(Path(before_shot).resolve()), '')
                     except:
                         pass
+                if not before_filename:
+                    # Try just the filename
+                    try:
+                        just_filename = Path(before_shot).name
+                        before_filename = screenshot_lookup.get(just_filename, '')
+                        if not before_filename:
+                            # Check if file exists in screenshots dir
+                            if (screenshots_dir / just_filename).exists():
+                                before_filename = just_filename
+                    except:
+                        pass
 
             after_filename = ''
             if after_shot:
@@ -860,6 +901,17 @@ def generate_test_results_html(results: List[Dict], screenshot_lookup: Dict) -> 
                     # Try resolved absolute path
                     try:
                         after_filename = screenshot_lookup.get(str(Path(after_shot).resolve()), '')
+                    except:
+                        pass
+                if not after_filename:
+                    # Try just the filename
+                    try:
+                        just_filename = Path(after_shot).name
+                        after_filename = screenshot_lookup.get(just_filename, '')
+                        if not after_filename:
+                            # Check if file exists in screenshots dir
+                            if (screenshots_dir / just_filename).exists():
+                                after_filename = just_filename
                     except:
                         pass
 

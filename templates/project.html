@@ -466,6 +466,23 @@
                     </div>
 
                     <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Test Type</label>
+                        <select id="spec-test-type" class="input-glass">
+                            <option value="functional">Functional Testing</option>
+                            <option value="regression">Regression Testing</option>
+                            <option value="smoke">Smoke Testing</option>
+                            <option value="sanity">Sanity Testing</option>
+                            <option value="integration">Integration Testing</option>
+                            <option value="e2e">End-to-End Testing</option>
+                            <option value="accessibility">Accessibility Testing</option>
+                            <option value="security">Security Testing</option>
+                            <option value="performance">Performance Testing</option>
+                            <option value="usability">Usability Testing</option>
+                            <option value="exploratory">Exploratory Testing</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="block text-sm font-medium text-slate-300 mb-2">Priority</label>
                         <select id="spec-priority" class="input-glass">
                             <option value="high">High</option>
@@ -672,6 +689,7 @@
                     document.getElementById('spec-id').value = spec.id;
                     document.getElementById('spec-name').value = spec.name;
                     document.getElementById('spec-category').value = spec.category || 'other';
+                    document.getElementById('spec-test-type').value = spec.test_type || 'functional';
                     document.getElementById('spec-priority').value = spec.priority || 'medium';
                     document.getElementById('spec-description').value = spec.description;
 
@@ -752,6 +770,7 @@
                 id: specId || 'spec_' + Date.now(),
                 name: document.getElementById('spec-name').value,
                 category: document.getElementById('spec-category').value,
+                test_type: document.getElementById('spec-test-type').value,
                 priority: document.getElementById('spec-priority').value,
                 description: document.getElementById('spec-description').value,
                 acceptance_criteria: criteria,
@@ -802,9 +821,10 @@
                                 class="spec-checkbox checkbox-glass mt-1" data-id="${spec.id}"
                                 onchange="toggleSpec('${spec.id}', this.checked)">
                             <div class="flex-1">
-                                <div class="flex items-center space-x-2 mb-1">
+                                <div class="flex items-center space-x-2 mb-1 flex-wrap">
                                     <span class="font-medium text-white">${spec.name}</span>
                                     <span class="badge badge-neutral text-xs">${spec.category || 'other'}</span>
+                                    ${spec.test_type ? `<span class="badge badge-info text-xs">${spec.test_type}</span>` : ''}
                                     <span class="badge ${spec.priority === 'high' ? 'badge-error' : spec.priority === 'medium' ? 'badge-warning' : 'badge-neutral'} text-xs">
                                         ${spec.priority || 'medium'}
                                     </span>
@@ -882,6 +902,7 @@
             document.getElementById('spec-id').value = '';
             document.getElementById('spec-name').value = template.name;
             document.getElementById('spec-category').value = template.category;
+            document.getElementById('spec-test-type').value = template.test_type || 'functional';
             document.getElementById('spec-priority').value = template.priority;
             document.getElementById('spec-description').value = template.description;
 
