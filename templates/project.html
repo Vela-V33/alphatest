@@ -470,6 +470,39 @@
                     <label class="block text-sm font-medium text-slate-300 mb-2">Password</label>
                     <input type="password" id="settings-password" value="{{ project.password }}" class="input-glass">
                 </div>
+
+                <!-- Slack Integration Section -->
+                <div class="mt-6 pt-6 border-t border-white/10">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 class="text-sm font-medium text-slate-300">Slack Notifications</h4>
+                            <p class="text-xs text-slate-500 mt-1">Get test results sent to your Slack channel</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="settings-slack-enabled" class="sr-only peer" {{ 'checked' if project.slack_notifications_enabled else '' }}>
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                    </div>
+
+                    <div id="slack-settings" class="space-y-3 {{ 'hidden' if not project.slack_notifications_enabled else '' }}">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Webhook URL</label>
+                            <input type="url" id="settings-slack-webhook" value="{{ project.slack_webhook_url or '' }}" placeholder="https://hooks.slack.com/services/..." class="input-glass text-sm">
+                            <p class="text-xs text-slate-500 mt-1">
+                                <a href="https://api.slack.com/messaging/webhooks" target="_blank" class="text-blue-400 hover:text-blue-300">Get your webhook URL →</a>
+                            </p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Notify On</label>
+                            <select id="settings-slack-notify-on" class="input-glass text-sm">
+                                <option value="all" {{ 'selected' if project.slack_notify_on == 'all' else '' }}>All test completions</option>
+                                <option value="failures" {{ 'selected' if project.slack_notify_on == 'failures' or not project.slack_notify_on else '' }}>Failures only</option>
+                                <option value="daily" {{ 'selected' if project.slack_notify_on == 'daily' else '' }}>Daily summary</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex space-x-3 pt-4">
                     <button type="button" onclick="hideSettings()" class="flex-1 btn-secondary">Cancel</button>
                     <button type="submit" class="flex-1 btn-primary">Save</button>
@@ -747,7 +780,10 @@
                 url: document.getElementById('settings-url').value,
                 login_url: document.getElementById('settings-login-url').value,
                 email: document.getElementById('settings-email').value,
-                password: document.getElementById('settings-password').value
+                password: document.getElementById('settings-password').value,
+                slack_notifications_enabled: document.getElementById('settings-slack-enabled').checked,
+                slack_webhook_url: document.getElementById('settings-slack-webhook').value,
+                slack_notify_on: document.getElementById('settings-slack-notify-on').value
             };
 
             const resp = await fetch('/project/' + projectId + '/update', {
@@ -758,6 +794,16 @@
 
             if ((await resp.json()).success) {
                 location.reload();
+            }
+        });
+
+        // Toggle Slack settings visibility
+        document.getElementById('settings-slack-enabled').addEventListener('change', (e) => {
+            const slackSettings = document.getElementById('slack-settings');
+            if (e.target.checked) {
+                slackSettings.classList.remove('hidden');
+            } else {
+                slackSettings.classList.add('hidden');
             }
         });
 
