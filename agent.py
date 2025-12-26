@@ -156,10 +156,8 @@ class AlphaTestAgent:
             forced_colors='none',
             java_script_enabled=True,
             bypass_csp=True,
-            record_video={
-                'dir': str(self.session_dir / "videos"),
-                'size': {'width': 1920, 'height': 1080}
-            }
+            record_video_dir=str(self.session_dir / "videos"),
+            record_video_size={'width': 1920, 'height': 1080}
         )
 
         self.page = await context.new_page()
