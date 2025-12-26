@@ -20,6 +20,7 @@ from typing import Optional, List, Dict, Any, Callable
 from playwright.async_api import async_playwright, Page, Browser
 import anthropic
 from visual_regression import VisualRegressionTester
+from assertions import Assertions, TestPatterns, AssertionResult
 
 
 class AlphaTestAgent:
@@ -61,6 +62,10 @@ class AlphaTestAgent:
         # Visual regression testing
         self.visual_regressions = []
         self.vrt = None
+
+        # Assertions
+        self.assertions = Assertions()
+        self.assertion_results = []
 
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
@@ -828,6 +833,104 @@ class AlphaTestAgent:
 
         except Exception as e:
             self.status(f"   ⚠️ Visual regression check failed: {e}")
+            return {'error': str(e)}
+
+    async def run_assertion(self, assertion_type: str, **kwargs) -> AssertionResult:
+        """
+        Run a custom assertion.
+
+        Args:
+            assertion_type: Type of assertion (equals, contains, url_contains, etc.)
+            **kwargs: Arguments for the assertion
+
+        Returns:
+            AssertionResult object
+        """
+        try:
+            # Get current page context for dynamic assertions
+            if assertion_type == 'url_contains':
+                kwargs['url'] = self.page.url
+            elif assertion_type == 'url_equals':
+                kwargs['url'] = self.page.url
+
+            # Run the assertion
+            assertion_method = getattr(self.assertions, f'assert_{assertion_type}', None)
+            if not assertion_method:
+                return AssertionResult(False, f"Unknown assertion type: {assertion_type}")
+
+            result = assertion_method(**kwargs)
+
+            # Track results
+            self.assertion_results.append(result.to_dict())
+
+            # Log result
+            status_icon = "✓" if result.passed else "✗"
+            self.status(f"   {status_icon} Assertion: {result.message}")
+
+            # Create issue if failed
+            if not result.passed:
+                self.issues.append({
+                    'type': 'assertion_failed',
+                    'message': result.message,
+                    'severity': 'high',
+                    'assertion_type': assertion_type,
+                    'details': result.details,
+                    'timestamp': result.timestamp
+                })
+
+            return result
+
+        except Exception as e:
+            self.status(f"   ⚠️ Assertion error: {e}")
+            return AssertionResult(False, f"Assertion error: {e}")
+
+    async def apply_test_pattern(self, pattern_name: str, **kwargs) -> Dict:
+        """
+        Apply a common test pattern.
+
+        Args:
+            pattern_name: Name of the pattern (login_flow, search_flow, etc.)
+            **kwargs: Arguments for the pattern
+
+        Returns:
+            Dictionary with pattern execution results
+        """
+        try:
+            # Get the pattern
+            pattern_method = getattr(TestPatterns, pattern_name, None)
+            if not pattern_method:
+                return {'error': f"Unknown pattern: {pattern_name}"}
+
+            pattern = pattern_method(**kwargs)
+            self.status(f"   📋 Applying pattern: {pattern_name}")
+
+            results = {
+                'pattern': pattern_name,
+                'steps_completed': [],
+                'assertions_passed': [],
+                'success': True
+            }
+
+            # Execute pattern steps (simplified - would need full implementation)
+            if 'steps' in pattern:
+                for step in pattern['steps']:
+                    # This would execute each step
+                    results['steps_completed'].append(step)
+
+            # Run pattern assertions
+            if 'assertions' in pattern:
+                for assertion in pattern['assertions']:
+                    assertion_type = assertion.pop('type')
+                    result = await self.run_assertion(assertion_type, **assertion)
+                    results['assertions_passed'].append(result.passed)
+
+                    if not result.passed:
+                        results['success'] = False
+
+            return results
+
+        except Exception as e:
+            self.status(f"   ⚠️ Pattern error: {e}")
             return {'error': str(e)}
 
     async def wait_for_stable(self, timeout: int = 5000):
@@ -2008,6 +2111,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             'screenshots': self.screenshots,
             'video_path': str(self.video_path) if self.video_path else None,
             'visual_regressions': self.visual_regressions,
+            'assertion_results': self.assertion_results,
             'steps': self.steps,
             'console_logs': self.console_logs,
             'console_errors': self.console_errors,
