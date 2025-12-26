@@ -279,7 +279,7 @@ class TestPatterns:
             'entity': entity_type,
             'steps': [
                 {'action': 'click', 'selector': f'button:has-text("New {entity_type}"), .create-{entity_type}'},
-                **TestPatterns.form_submission(data)['steps'],
+                *TestPatterns.form_submission(data)['steps'],
                 {'action': 'wait', 'condition': 'url_contains', 'value': entity_type.lower()}
             ],
             'assertions': [
