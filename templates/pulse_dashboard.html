@@ -135,6 +135,24 @@
             </div>
         </div>
 
+        <!-- Success Rate Trend -->
+        <div class="glass-card p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span>Success Rate Over Time</span>
+                </h3>
+                <select id="trendDays" onchange="loadTrendData()" class="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500/50">
+                    <option value="7">Last 7 Days</option>
+                    <option value="30" selected>Last 30 Days</option>
+                    <option value="90">Last 90 Days</option>
+                </select>
+            </div>
+            <canvas id="successRateChart" class="w-full" style="max-height: 350px;"></canvas>
+        </div>
+
         <!-- Top Recurring Issues -->
         {% if trend_data.top_recurring_issues|length > 0 %}
         <div class="glass-card p-6 mb-8">
@@ -416,6 +434,111 @@
         if (!screenshotsFound) {
             screenshotsContainer.innerHTML = '<p class="text-slate-500 text-sm">No screenshots available yet. Run tests to capture screenshots.</p>';
         }
+
+        // Success Rate Chart
+        let successRateChartInstance = null;
+
+        async function loadTrendData() {
+            const days = document.getElementById('trendDays').value;
+            const projectId = '{{ project.id }}';
+
+            try {
+                const response = await fetch(`/api/project/${projectId}/trends?days=${days}`);
+                const data = await response.json();
+
+                // Destroy existing chart if it exists
+                if (successRateChartInstance) {
+                    successRateChartInstance.destroy();
+                }
+
+                // Create success rate chart
+                const ctx = document.getElementById('successRateChart');
+                successRateChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            {
+                                label: 'Success Rate (%)',
+                                data: data.success_rate,
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Total Tests',
+                                data: data.total,
+                                borderColor: 'rgb(148, 163, 184)',
+                                backgroundColor: 'rgba(148, 163, 184, 0.05)',
+                                tension: 0.4,
+                                fill: false,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { color: 'rgb(148, 163, 184)' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        if (context.datasetIndex === 0) {
+                                            const index = context.dataIndex;
+                                            const passed = data.passed[index];
+                                            const failed = data.failed[index];
+                                            return `Passed: ${passed} | Failed: ${failed}`;
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    color: 'rgb(148, 163, 184)',
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                beginAtZero: true,
+                                ticks: { color: 'rgb(148, 163, 184)' },
+                                grid: { drawOnChartArea: false }
+                            },
+                            x: {
+                                ticks: { color: 'rgb(148, 163, 184)', maxRotation: 45, minRotation: 45 },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading trend data:', error);
+            }
+        }
+
+        // Load initial trend data
+        loadTrendData();
     </script>
 
 </body>

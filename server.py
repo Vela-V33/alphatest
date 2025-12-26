@@ -555,6 +555,85 @@ def compare_reports_page(project_id):
                          report1_id=report1_id,
                          report2_id=report2_id)
 
+@app.route('/api/project/<project_id>/trends')
+def get_trends(project_id):
+    """Get trend data for charts."""
+    days = int(request.args.get('days', 30))
+
+    project_reports_dir = REPORTS_DIR / project_id
+    if not project_reports_dir.exists():
+        return jsonify({'data': []})
+
+    # Collect all reports
+    reports = []
+    for report_dir in sorted(project_reports_dir.iterdir()):
+        if report_dir.is_dir():
+            report_file = report_dir / "report.json"
+            if report_file.exists():
+                try:
+                    report_data = json.loads(report_file.read_text())
+                    reports.append({
+                        'id': report_dir.name,
+                        'date': report_data.get('generated_at', report_dir.name),
+                        'summary': report_data.get('summary', {}),
+                        'issues': len(report_data.get('issues', []))
+                    })
+                except:
+                    pass
+
+    # Sort by date
+    reports.sort(key=lambda r: r['date'])
+
+    # Get recent reports based on days parameter
+    from datetime import datetime, timedelta
+    cutoff_date = datetime.now() - timedelta(days=days)
+    recent_reports = []
+
+    for report in reports:
+        try:
+            report_date = datetime.fromisoformat(report['date'].replace('Z', '+00:00'))
+            if report_date >= cutoff_date:
+                recent_reports.append(report)
+        except:
+            # If can't parse date, include it anyway
+            recent_reports.append(report)
+
+    # Format for charts
+    trend_data = {
+        'labels': [],
+        'passed': [],
+        'failed': [],
+        'total': [],
+        'issues': [],
+        'success_rate': []
+    }
+
+    for report in recent_reports[-50:]:  # Limit to last 50 reports
+        # Format date for label
+        try:
+            dt = datetime.fromisoformat(report['date'].replace('Z', '+00:00'))
+            label = dt.strftime('%m/%d %H:%M')
+        except:
+            label = report['id'][:10]
+
+        trend_data['labels'].append(label)
+
+        summary = report['summary']
+        passed = summary.get('passed', 0)
+        failed = summary.get('failed', 0)
+        total = summary.get('total', 0)
+
+        trend_data['passed'].append(passed)
+        trend_data['failed'].append(failed)
+        trend_data['total'].append(total)
+        trend_data['issues'].append(report['issues'])
+
+        # Calculate success rate
+        success_rate = int((passed / total * 100)) if total > 0 else 0
+        trend_data['success_rate'].append(success_rate)
+
+    return jsonify(trend_data)
+
 @app.route('/project/<project_id>/specs', methods=['GET', 'POST'])
 def manage_specs(project_id):
     """Manage test specifications."""
