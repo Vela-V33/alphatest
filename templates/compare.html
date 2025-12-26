@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Reports - {{ project.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background-attachment: fixed;
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .badge-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .badge-warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .badge-neutral { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+        .badge-info { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border-left: 3px solid #10b981;
+        }
+
+        .stat-card-danger {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+            border-left: 3px solid #ef4444;
+        }
+
+        .delta-positive { color: #10b981; }
+        .delta-negative { color: #ef4444; }
+        .delta-neutral { color: #94a3b8; }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <a href="/project/{{ project_id }}/reports" class="text-slate-400 hover:text-white text-sm mb-2 inline-block">← Back to Reports</a>
+                    <h1 class="text-4xl font-bold text-white">Test Run Comparison</h1>
+                    <p class="text-slate-400 mt-2">{{ project.name }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="glass-card p-8 text-center">
+            <div class="animate-pulse">
+                <div class="text-2xl mb-4">⚡</div>
+                <p class="text-slate-400">Loading comparison...</p>
+            </div>
+        </div>
+
+        <!-- Comparison Content -->
+        <div id="comparison-content" class="hidden">
+            <!-- Delta Summary -->
+            <div class="glass-card p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-6">Changes Overview</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="delta-summary"></div>
+            </div>
+
+            <!-- Side-by-Side Headers -->
+            <div class="comparison-grid mb-6">
+                <div class="glass-card p-4">
+                    <h3 class="text-lg font-bold text-slate-300">Baseline Run</h3>
+                    <p class="text-sm text-slate-500" id="report1-date"></p>
+                </div>
+                <div class="glass-card p-4">
+                    <h3 class="text-lg font-bold text-slate-300">Comparison Run</h3>
+                    <p class="text-sm text-slate-500" id="report2-date"></p>
+                </div>
+            </div>
+
+            <!-- Test Results Comparison -->
+            <div class="comparison-grid mb-8">
+                <div class="glass-card p-6">
+                    <h3 class="text-xl font-bold mb-4">Test Results</h3>
+                    <div id="report1-summary" class="space-y-3"></div>
+                </div>
+                <div class="glass-card p-6">
+                    <h3 class="text-xl font-bold mb-4">Test Results</h3>
+                    <div id="report2-summary" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- New Issues -->
+            <div id="new-issues-section" class="glass-card p-6 mb-8 hidden">
+                <div class="flex items-center space-x-3 mb-4">
+                    <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <h2 class="text-2xl font-bold">New Issues (<span id="new-issues-count">0</span>)</h2>
+                </div>
+                <div id="new-issues-list" class="space-y-3"></div>
+            </div>
+
+            <!-- Resolved Issues -->
+            <div id="resolved-issues-section" class="glass-card p-6 mb-8 hidden">
+                <div class="flex items-center space-x-3 mb-4">
+                    <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h2 class="text-2xl font-bold">Resolved Issues (<span id="resolved-issues-count">0</span>)</h2>
+                </div>
+                <div id="resolved-issues-list" class="space-y-3"></div>
+            </div>
+
+            <!-- Persisting Issues -->
+            <div id="persisting-issues-section" class="glass-card p-6 mb-8 hidden">
+                <div class="flex items-center space-x-3 mb-4">
+                    <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h2 class="text-2xl font-bold">Persisting Issues (<span id="persisting-issues-count">0</span>)</h2>
+                </div>
+                <div id="persisting-issues-list" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const projectId = '{{ project_id }}';
+        const report1Id = '{{ report1_id }}';
+        const report2Id = '{{ report2_id }}';
+
+        async function loadComparison() {
+            try {
+                const resp = await fetch(`/api/project/${projectId}/compare?report1=${report1Id}&report2=${report2Id}`);
+                const data = await resp.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                renderComparison(data);
+
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('comparison-content').classList.remove('hidden');
+            } catch (err) {
+                alert('Error loading comparison: ' + err.message);
+            }
+        }
+
+        function renderComparison(data) {
+            // Delta summary
+            const deltaSummary = document.getElementById('delta-summary');
+            const changes = data.changes;
+
+            deltaSummary.innerHTML = `
+                ${renderDeltaCard('Tests Passed', changes.tests_passed_delta, data.report2.summary.passed || 0)}
+                ${renderDeltaCard('Tests Failed', changes.tests_failed_delta, data.report2.summary.failed || 0, true)}
+                ${renderDeltaCard('Total Issues', changes.issues_delta, data.report2.issues.length, true)}
+                ${renderDeltaCard('New Issues', changes.new_issues.length, changes.new_issues.length, true)}
+            `;
+
+            // Dates
+            document.getElementById('report1-date').textContent = new Date(data.report1.date).toLocaleString();
+            document.getElementById('report2-date').textContent = new Date(data.report2.date).toLocaleString();
+
+            // Summaries
+            renderSummary('report1-summary', data.report1.summary);
+            renderSummary('report2-summary', data.report2.summary);
+
+            // Issues
+            if (changes.new_issues.length > 0) {
+                document.getElementById('new-issues-section').classList.remove('hidden');
+                document.getElementById('new-issues-count').textContent = changes.new_issues.length;
+                renderIssueList('new-issues-list', changes.new_issues, 'error');
+            }
+
+            if (changes.resolved_issues.length > 0) {
+                document.getElementById('resolved-issues-section').classList.remove('hidden');
+                document.getElementById('resolved-issues-count').textContent = changes.resolved_issues.length;
+                renderIssueList('resolved-issues-list', changes.resolved_issues, 'success');
+            }
+
+            if (changes.persisting_issues.length > 0) {
+                document.getElementById('persisting-issues-section').classList.remove('hidden');
+                document.getElementById('persisting-issues-count').textContent = changes.persisting_issues.length;
+                renderIssueList('persisting-issues-list', changes.persisting_issues, 'warning');
+            }
+        }
+
+        function renderDeltaCard(label, delta, current, inverse = false) {
+            let deltaClass = 'delta-neutral';
+            let deltaIcon = '━';
+
+            if (delta > 0) {
+                deltaClass = inverse ? 'delta-negative' : 'delta-positive';
+                deltaIcon = '▲';
+            } else if (delta < 0) {
+                deltaClass = inverse ? 'delta-positive' : 'delta-negative';
+                deltaIcon = '▼';
+            }
+
+            const cardClass = (delta > 0 && inverse) || (delta < 0 && !inverse) ? 'stat-card-danger' : 'stat-card';
+
+            return `
+                <div class="${cardClass} glass-card p-4">
+                    <div class="text-sm text-slate-400 mb-1">${label}</div>
+                    <div class="text-3xl font-bold">${current}</div>
+                    <div class="${deltaClass} text-sm mt-1">
+                        ${deltaIcon} ${Math.abs(delta)} ${delta === 0 ? 'no change' : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSummary(containerId, summary) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `
+                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                    <span class="text-slate-300">Total Tests</span>
+                    <span class="font-bold">${summary.total || 0}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                    <span class="text-slate-300">Passed</span>
+                    <span class="badge badge-success">${summary.passed || 0}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                    <span class="text-slate-300">Failed</span>
+                    <span class="badge badge-error">${summary.failed || 0}</span>
+                </div>
+            `;
+        }
+
+        function renderIssueList(containerId, issues, badgeType) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = issues.map(issue => `
+                <div class="bg-white/5 p-4 rounded-lg">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="badge badge-${badgeType}">${issue.type || 'Issue'}</span>
+                                ${issue.severity ? `<span class="badge badge-neutral">${issue.severity}</span>` : ''}
+                            </div>
+                            <p class="text-white">${issue.message || issue.description || 'No description'}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        loadComparison();
+    </script>
+</body>
+</html>

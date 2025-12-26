@@ -479,6 +479,82 @@ def report_video(project_id, report_id, filename):
         return "Videos directory not found", 404
     return send_from_directory(video_dir, filename)
 
+@app.route('/api/project/<project_id>/compare')
+def compare_reports_api(project_id):
+    """Compare two test reports."""
+    report1_id = request.args.get('report1')
+    report2_id = request.args.get('report2')
+
+    if not report1_id or not report2_id:
+        return jsonify({'error': 'Both report1 and report2 parameters required'}), 400
+
+    project_reports_dir = REPORTS_DIR / project_id
+
+    # Load both reports
+    report1_file = project_reports_dir / report1_id / "report.json"
+    report2_file = project_reports_dir / report2_id / "report.json"
+
+    if not report1_file.exists() or not report2_file.exists():
+        return jsonify({'error': 'One or both reports not found'}), 404
+
+    report1 = json.loads(report1_file.read_text())
+    report2 = json.loads(report2_file.read_text())
+
+    # Calculate comparison
+    comparison = {
+        'report1': {
+            'id': report1_id,
+            'date': report1.get('generated_at', report1_id),
+            'summary': report1.get('summary', {}),
+            'issues': report1.get('issues', [])
+        },
+        'report2': {
+            'id': report2_id,
+            'date': report2.get('generated_at', report2_id),
+            'summary': report2.get('summary', {}),
+            'issues': report2.get('issues', [])
+        },
+        'changes': {
+            'tests_passed_delta': report2.get('summary', {}).get('passed', 0) - report1.get('summary', {}).get('passed', 0),
+            'tests_failed_delta': report2.get('summary', {}).get('failed', 0) - report1.get('summary', {}).get('failed', 0),
+            'issues_delta': len(report2.get('issues', [])) - len(report1.get('issues', [])),
+        }
+    }
+
+    # Find new, resolved, and persisting issues
+    report1_fingerprints = {issue.get('fingerprint'): issue for issue in report1.get('issues', []) if issue.get('fingerprint')}
+    report2_fingerprints = {issue.get('fingerprint'): issue for issue in report2.get('issues', []) if issue.get('fingerprint')}
+
+    new_issues = [issue for fp, issue in report2_fingerprints.items() if fp not in report1_fingerprints]
+    resolved_issues = [issue for fp, issue in report1_fingerprints.items() if fp not in report2_fingerprints]
+    persisting_issues = [issue for fp, issue in report2_fingerprints.items() if fp in report1_fingerprints]
+
+    comparison['changes']['new_issues'] = new_issues
+    comparison['changes']['resolved_issues'] = resolved_issues
+    comparison['changes']['persisting_issues'] = persisting_issues
+
+    return jsonify(comparison)
+
+@app.route('/project/<project_id>/compare')
+def compare_reports_page(project_id):
+    """Show comparison page."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return "Project not found", 404
+
+    report1_id = request.args.get('report1')
+    report2_id = request.args.get('report2')
+
+    if not report1_id or not report2_id:
+        return "Missing report IDs", 400
+
+    return render_template('compare.html',
+                         project=project,
+                         project_id=project_id,
+                         report1_id=report1_id,
+                         report2_id=report2_id)
+
 @app.route('/project/<project_id>/specs', methods=['GET', 'POST'])
 def manage_specs(project_id):
     """Manage test specifications."""

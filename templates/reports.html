@@ -61,6 +61,18 @@
                             <option value="passed">Passed Only</option>
                             <option value="failed">Failed Only</option>
                         </select>
+                        <button onclick="toggleCompareMode()" id="compareModeBtn" class="inline-flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm hover:bg-white/10 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <span>Compare</span>
+                        </button>
+                        <button onclick="compareSelected()" id="compareBtn" class="hidden inline-flex items-center space-x-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/50 rounded-lg text-emerald-400 text-sm hover:bg-emerald-500/30 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                            <span id="compareBtnText">Compare Selected (0)</span>
+                        </button>
                         <button onclick="toggleView()" id="viewToggle" class="inline-flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm hover:bg-white/10 transition-colors">
                             <svg id="viewIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -76,6 +88,7 @@
                 <table class="w-full">
                     <thead class="bg-white/5 border-b border-white/10">
                         <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider compare-checkbox hidden" style="width: 50px;"></th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Date & Time</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Test Run</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Outcome</th>
@@ -87,7 +100,13 @@
                         {% for report in reports %}
                         <tr class="hover:bg-white/5 transition-colors cursor-pointer report-row"
                             data-outcome="{{ 'passed' if report.summary.failed == 0 else 'failed' }}"
-                            onclick="window.location.href='/reports/{{ project.id }}/{{ report.id }}'">
+                            data-report-id="{{ report.id }}"
+                            onclick="handleRowClick(event, '{{ project.id }}', '{{ report.id }}')">
+                            <td class="px-6 py-4 compare-checkbox hidden">
+                                <input type="checkbox" class="report-checkbox w-4 h-4 rounded border-gray-600 text-emerald-500 focus:ring-emerald-500"
+                                       data-report-id="{{ report.id }}"
+                                       onclick="event.stopPropagation(); updateCompareButton();">
+                            </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center space-x-3">
                                     <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -360,6 +379,74 @@
                 viewText.textContent = 'Grid View';
                 currentView = 'list';
             }
+        }
+
+        // Compare mode functionality
+        let compareMode = false;
+
+        function toggleCompareMode() {
+            compareMode = !compareMode;
+            const checkboxes = document.querySelectorAll('.compare-checkbox');
+            const compareBtn = document.getElementById('compareBtn');
+            const compareModeBtn = document.getElementById('compareModeBtn');
+
+            if (compareMode) {
+                checkboxes.forEach(cb => cb.classList.remove('hidden'));
+                compareBtn.classList.remove('hidden');
+                compareModeBtn.classList.add('bg-emerald-500/20', 'border-emerald-500/50', 'text-emerald-400');
+            } else {
+                checkboxes.forEach(cb => cb.classList.add('hidden'));
+                compareBtn.classList.add('hidden');
+                compareModeBtn.classList.remove('bg-emerald-500/20', 'border-emerald-500/50', 'text-emerald-400');
+                // Clear all checkboxes
+                document.querySelectorAll('.report-checkbox').forEach(cb => cb.checked = false);
+            }
+            updateCompareButton();
+        }
+
+        function handleRowClick(event, projectId, reportId) {
+            if (compareMode) {
+                // In compare mode, toggle checkbox
+                event.preventDefault();
+                const checkbox = event.currentTarget.querySelector('.report-checkbox');
+                if (checkbox && event.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    updateCompareButton();
+                }
+            } else {
+                // Normal mode, navigate to report
+                window.location.href = `/reports/${projectId}/${reportId}`;
+            }
+        }
+
+        function updateCompareButton() {
+            const checked = document.querySelectorAll('.report-checkbox:checked');
+            const compareBtn = document.getElementById('compareBtn');
+            const compareBtnText = document.getElementById('compareBtnText');
+
+            compareBtnText.textContent = `Compare Selected (${checked.length})`;
+
+            if (checked.length === 2) {
+                compareBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                compareBtn.disabled = false;
+            } else {
+                compareBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                compareBtn.disabled = true;
+            }
+        }
+
+        function compareSelected() {
+            const checked = Array.from(document.querySelectorAll('.report-checkbox:checked'));
+            if (checked.length !== 2) {
+                alert('Please select exactly 2 reports to compare');
+                return;
+            }
+
+            const report1 = checked[0].dataset.reportId;
+            const report2 = checked[1].dataset.reportId;
+            const projectId = '{{ project.id }}';
+
+            window.location.href = `/project/${projectId}/compare?report1=${report1}&report2=${report2}`;
         }
     </script>
 </body>
