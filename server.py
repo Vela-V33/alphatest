@@ -691,6 +691,123 @@ def serve_diff(project_id, filename):
     return send_from_directory(diffs_dir, filename)
 
 
+# Test Data Management Endpoints
+@app.route('/api/project/<project_id>/fixtures', methods=['GET'])
+def get_fixtures(project_id):
+    """Get list of all fixtures."""
+    from test_data import TestDataManager
+
+    project_dir = REPORTS_DIR / project_id
+    tdm = TestDataManager(project_dir)
+    fixtures = tdm.list_fixtures()
+
+    # Get fixture data for each
+    fixture_list = []
+    for fixture_name in fixtures:
+        fixture_data = tdm.get_fixture(fixture_name)
+        fixture_list.append({
+            'name': fixture_name,
+            'type': type(fixture_data).__name__,
+            'count': len(fixture_data) if isinstance(fixture_data, list) else 1
+        })
+
+    return jsonify({'fixtures': fixture_list})
+
+@app.route('/api/project/<project_id>/fixtures/<fixture_name>', methods=['GET'])
+def get_fixture(project_id, fixture_name):
+    """Get a specific fixture."""
+    from test_data import TestDataManager
+
+    project_dir = REPORTS_DIR / project_id
+    tdm = TestDataManager(project_dir)
+    fixture_data = tdm.get_fixture(fixture_name)
+
+    if fixture_data is None:
+        return jsonify({'error': 'Fixture not found'}), 404
+
+    return jsonify({'name': fixture_name, 'data': fixture_data})
+
+@app.route('/api/project/<project_id>/fixtures', methods=['POST'])
+def save_fixture(project_id):
+    """Save a new fixture."""
+    from test_data import TestDataManager
+
+    data = request.get_json()
+    fixture_name = data.get('name')
+    fixture_data = data.get('data')
+
+    if not fixture_name or not fixture_data:
+        return jsonify({'error': 'Name and data are required'}), 400
+
+    project_dir = REPORTS_DIR / project_id
+    tdm = TestDataManager(project_dir)
+    success = tdm.save_fixture(fixture_name, fixture_data)
+
+    return jsonify({'success': success, 'name': fixture_name})
+
+@app.route('/api/project/<project_id>/fixtures/<fixture_name>', methods=['DELETE'])
+def delete_fixture(project_id, fixture_name):
+    """Delete a fixture."""
+    from test_data import TestDataManager
+
+    project_dir = REPORTS_DIR / project_id
+    tdm = TestDataManager(project_dir)
+    success = tdm.delete_fixture(fixture_name)
+
+    return jsonify({'success': success})
+
+@app.route('/api/project/<project_id>/test-data/generate', methods=['POST'])
+def generate_test_data(project_id):
+    """Generate test data on-demand."""
+    from test_data import TestDataManager
+
+    data = request.get_json()
+    entity_type = data.get('entity_type')
+    count = data.get('count', 1)
+    save_as_fixture = data.get('save_as_fixture', False)
+    fixture_name = data.get('fixture_name')
+
+    if not entity_type:
+        return jsonify({'error': 'entity_type is required'}), 400
+
+    project_dir = REPORTS_DIR / project_id
+    tdm = TestDataManager(project_dir)
+
+    try:
+        if count == 1:
+            # Generate single item
+            generators = {
+                'user': tdm.generate_user,
+                'address': tdm.generate_address,
+                'company': tdm.generate_company,
+                'product': tdm.generate_product,
+                'credit_card': tdm.generate_credit_card
+            }
+            generator = generators.get(entity_type)
+            if not generator:
+                return jsonify({'error': f'Unknown entity type: {entity_type}'}), 400
+
+            generated_data = generator()
+        else:
+            # Generate multiple items
+            generated_data = tdm.create_seed_data(entity_type, count)
+
+        # Optionally save as fixture
+        if save_as_fixture and fixture_name:
+            tdm.save_fixture(fixture_name, generated_data)
+
+        return jsonify({
+            'success': True,
+            'entity_type': entity_type,
+            'count': count,
+            'data': generated_data,
+            'saved_as_fixture': save_as_fixture
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/issues')
 def issues_dashboard():
     """View all issues across projects."""

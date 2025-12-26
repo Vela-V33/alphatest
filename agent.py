@@ -21,6 +21,7 @@ from playwright.async_api import async_playwright, Page, Browser
 import anthropic
 from visual_regression import VisualRegressionTester
 from assertions import Assertions, TestPatterns, AssertionResult
+from test_data import TestDataManager
 
 
 class AlphaTestAgent:
@@ -66,6 +67,9 @@ class AlphaTestAgent:
         # Assertions
         self.assertions = Assertions()
         self.assertion_results = []
+
+        # Test data management
+        self.test_data_manager = None
 
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
@@ -132,6 +136,7 @@ class AlphaTestAgent:
         if self.session_dir:
             project_dir = self.session_dir.parent
             self.vrt = VisualRegressionTester(project_dir)
+            self.test_data_manager = TestDataManager(project_dir)
 
         # Create context with settings optimized for rendering
         context = await self.browser.new_context(
@@ -932,6 +937,71 @@ class AlphaTestAgent:
         except Exception as e:
             self.status(f"   ⚠️ Pattern error: {e}")
             return {'error': str(e)}
+
+    async def use_fixture(self, name: str) -> Optional[Any]:
+        """
+        Load and use a saved fixture.
+
+        Args:
+            name: Name of the fixture to load
+
+        Returns:
+            Fixture data or None if not found
+        """
+        try:
+            if not self.test_data_manager:
+                self.status(f"   ⚠️ Test data manager not initialized")
+                return None
+
+            fixture = self.test_data_manager.get_fixture(name)
+            if fixture:
+                self.status(f"   📦 Loaded fixture: {name}")
+            else:
+                self.status(f"   ⚠️ Fixture not found: {name}")
+
+            return fixture
+
+        except Exception as e:
+            self.status(f"   ⚠️ Error loading fixture: {e}")
+            return None
+
+    async def generate_test_data(self, entity_type: str, **kwargs) -> Optional[Dict]:
+        """
+        Generate test data for a specific entity type.
+
+        Args:
+            entity_type: Type of entity (user, product, company, etc.)
+            **kwargs: Additional parameters for the generator
+
+        Returns:
+            Generated test data or None on error
+        """
+        try:
+            if not self.test_data_manager:
+                self.status(f"   ⚠️ Test data manager not initialized")
+                return None
+
+            generators = {
+                'user': self.test_data_manager.generate_user,
+                'address': self.test_data_manager.generate_address,
+                'company': self.test_data_manager.generate_company,
+                'product': self.test_data_manager.generate_product,
+                'credit_card': self.test_data_manager.generate_credit_card
+            }
+
+            generator = generators.get(entity_type)
+            if not generator:
+                self.status(f"   ⚠️ Unknown entity type: {entity_type}")
+                return None
+
+            data = generator(**kwargs) if kwargs else generator()
+            self.status(f"   🎲 Generated {entity_type} data")
+
+            return data
+
+        except Exception as e:
+            self.status(f"   ⚠️ Error generating test data: {e}")
+            return None
 
     async def wait_for_stable(self, timeout: int = 5000):
         """Wait for page to be stable (no loading, animations complete)."""
@@ -2105,6 +2175,11 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
     
     def get_report_data(self) -> Dict:
         """Get all data for report generation."""
+        # Get available fixtures if test data manager is initialized
+        available_fixtures = []
+        if self.test_data_manager:
+            available_fixtures = self.test_data_manager.list_fixtures()
+
         return {
             'results': self.results,
             'issues': self.issues,
@@ -2119,6 +2194,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             'performance_metrics': self.performance_metrics,
             'session_dir': str(self.session_dir) if self.session_dir else None,
             'browser_type': self.browser_type,
+            'available_fixtures': available_fixtures,
             'generated_at': datetime.now().isoformat()
         }
 
