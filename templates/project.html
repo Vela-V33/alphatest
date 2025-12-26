@@ -471,6 +471,26 @@
                     <input type="password" id="settings-password" value="{{ project.password }}" class="input-glass">
                 </div>
 
+                <!-- Browser Selection -->
+                <div class="mt-6 pt-6 border-t border-white/10">
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-slate-300 mb-1">Browser</h4>
+                        <p class="text-xs text-slate-500">Select which browser to use for testing</p>
+                    </div>
+                    <select id="settings-browser-type" class="input-glass text-sm">
+                        <option value="chromium" {{ 'selected' if project.browser_type == 'chromium' or not project.browser_type else '' }}>Chrome / Chromium</option>
+                        <option value="firefox" {{ 'selected' if project.browser_type == 'firefox' else '' }}>Firefox</option>
+                        <option value="webkit" {{ 'selected' if project.browser_type == 'webkit' else '' }}>Safari (WebKit)</option>
+                        <option value="edge" {{ 'selected' if project.browser_type == 'edge' else '' }}>Microsoft Edge</option>
+                    </select>
+                    <p class="text-xs text-slate-500 mt-2">
+                        <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Tests will run in the selected browser. Useful for cross-browser compatibility testing.
+                    </p>
+                </div>
+
                 <!-- Slack Integration Section -->
                 <div class="mt-6 pt-6 border-t border-white/10">
                     <div class="flex items-center justify-between mb-4">
@@ -781,6 +801,7 @@
                 login_url: document.getElementById('settings-login-url').value,
                 email: document.getElementById('settings-email').value,
                 password: document.getElementById('settings-password').value,
+                browser_type: document.getElementById('settings-browser-type').value,
                 slack_notifications_enabled: document.getElementById('settings-slack-enabled').checked,
                 slack_webhook_url: document.getElementById('settings-slack-webhook').value,
                 slack_notify_on: document.getElementById('settings-slack-notify-on').value

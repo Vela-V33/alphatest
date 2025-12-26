@@ -324,6 +324,7 @@ def update_project(project_id):
         'login_url': data.get('login_url', projects[project_id]['login_url']),
         'email': data.get('email', projects[project_id]['email']),
         'password': data.get('password', projects[project_id]['password']),
+        'browser_type': data.get('browser_type', projects[project_id].get('browser_type', 'chromium')),
         'slack_webhook_url': data.get('slack_webhook_url', projects[project_id].get('slack_webhook_url', '')),
         'slack_notifications_enabled': data.get('slack_notifications_enabled', projects[project_id].get('slack_notifications_enabled', False)),
         'slack_notify_on': data.get('slack_notify_on', projects[project_id].get('slack_notify_on', 'failures')),  # all, failures, or daily
@@ -1251,7 +1252,8 @@ def handle_test(data):
             agent = AlphaTestAgent(
                 api_key=config.get('anthropic_api_key'),
                 status_callback=lambda msg: socketio.emit('test_progress', {'message': msg}),
-                screenshot_callback=lambda path: socketio.emit('test_screenshot', {'path': path})
+                screenshot_callback=lambda path: socketio.emit('test_screenshot', {'path': path}),
+                browser_type=project.get('browser_type', 'chromium')
             )
 
             try:
@@ -1371,7 +1373,8 @@ def handle_run_spec(data):
             agent = AlphaTestAgent(
                 api_key=config.get('anthropic_api_key'),
                 status_callback=lambda msg: socketio.emit('test_progress', {'message': msg}),
-                screenshot_callback=lambda path: socketio.emit('test_screenshot', {'path': path})
+                screenshot_callback=lambda path: socketio.emit('test_screenshot', {'path': path}),
+                browser_type=project.get('browser_type', 'chromium')
             )
 
             try:
@@ -1566,7 +1569,10 @@ def api_trigger_run():
             async def tests_async():
                 from agent import AlphaTestAgent
 
-                agent = AlphaTestAgent()
+                agent = AlphaTestAgent(
+                    api_key=config.get('anthropic_api_key'),
+                    browser_type=project.get('browser_type', 'chromium')
+                )
                 await agent.initialize(session_dir=report_dir)
 
                 try:

@@ -25,10 +25,11 @@ class AlphaTestAgent:
     """AI agent that performs browser-based testing with improved reliability."""
     
     def __init__(
-        self, 
-        api_key: str, 
+        self,
+        api_key: str,
         status_callback: Callable = None,
-        screenshot_callback: Callable = None
+        screenshot_callback: Callable = None,
+        browser_type: str = 'chromium'
     ):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = "claude-sonnet-4-20250514"
@@ -36,7 +37,8 @@ class AlphaTestAgent:
         self.page: Optional[Page] = None
         self.status = status_callback or print
         self.on_screenshot = screenshot_callback or (lambda x: None)
-        
+        self.browser_type = browser_type  # chromium, firefox, webkit, edge
+
         # Test data
         self.screenshots = []
         self.issues = []
@@ -54,16 +56,26 @@ class AlphaTestAgent:
         self.network_errors = []
         self.performance_metrics = []
         self.page_timings = {}
-    
+
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
-        self.status("🚀 Starting browser...")
-        pw = await async_playwright().start()
+        browser_name = self.browser_type.capitalize()
+        self.status(f"🚀 Starting {browser_name} browser...")
+        self.playwright = await async_playwright().start()
 
-        # Launch with args optimized for headless screenshot capture
-        self.browser = await pw.chromium.launch(
-            headless=True,
-            args=[
+        # Get browser launcher based on type
+        if self.browser_type == 'firefox':
+            browser_launcher = self.playwright.firefox
+        elif self.browser_type == 'webkit':
+            browser_launcher = self.playwright.webkit
+        elif self.browser_type == 'edge':
+            browser_launcher = self.playwright.chromium  # Edge uses Chromium
+        else:  # chromium (default)
+            browser_launcher = self.playwright.chromium
+
+        # Browser-specific launch arguments
+        if self.browser_type in ['chromium', 'edge']:
+            launch_args = [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
@@ -78,7 +90,23 @@ class AlphaTestAgent:
                 '--disable-renderer-backgrounding',
                 '--force-color-profile=srgb'
             ]
-        )
+            if self.browser_type == 'edge':
+                launch_args.append('--enable-features=msEdgeDevToolsWdpRemoteDebugging')
+        elif self.browser_type == 'firefox':
+            # Firefox has different args
+            launch_args = []
+        else:  # webkit
+            launch_args = []
+
+        # Launch browser
+        if self.browser_type in ['chromium', 'edge']:
+            self.browser = await browser_launcher.launch(
+                headless=True,
+                args=launch_args,
+                channel='msedge' if self.browser_type == 'edge' else None
+            )
+        else:
+            self.browser = await browser_launcher.launch(headless=True)
 
         # Setup session directory first
         if session_dir:
@@ -1912,6 +1940,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             'network_errors': self.network_errors,
             'performance_metrics': self.performance_metrics,
             'session_dir': str(self.session_dir) if self.session_dir else None,
+            'browser_type': self.browser_type,
             'generated_at': datetime.now().isoformat()
         }
 
