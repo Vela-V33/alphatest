@@ -82,6 +82,25 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
     print(f"[DEBUG] Screenshot lookup values (first 3): {list(screenshot_lookup.values())[:3] if screenshot_lookup else 'None'}")
     print(f"[DEBUG] ===== END SCREENSHOT PROCESSING =====\n")
 
+    # Copy video to report directory
+    video_filename = None
+    video_path = data.get('video_path')
+    if video_path:
+        videos_dir = output_dir / "videos"
+        videos_dir.mkdir(exist_ok=True)
+        src_video = Path(video_path)
+        if src_video.exists():
+            dst_video = videos_dir / src_video.name
+            try:
+                if src_video.resolve() != dst_video.resolve():
+                    shutil.copy(src_video, dst_video)
+                video_filename = src_video.name
+                print(f"[DEBUG] ✓ Video copied: {video_filename}")
+            except Exception as e:
+                print(f"[WARNING] Failed to copy video {src_video}: {e}")
+        else:
+            print(f"[WARNING] Video file not found: {src_video}")
+
     # Calculate summary
     results = data.get('results', [])
     total_tests = len(results)
@@ -453,6 +472,9 @@ def generate_report(data: Dict, output_dir: Path, project: Dict = None) -> str:
 
             <!-- Improvement Suggestions -->
             {generate_suggestions_html(suggestions)}
+
+            <!-- Video Recording -->
+            {generate_video_player(video_filename) if video_filename else ''}
 
             <!-- All Screenshots Gallery -->
             {generate_screenshots_gallery(screenshots, screenshot_lookup)}
@@ -1386,6 +1408,43 @@ def generate_junit_xml(data: Dict, output_path: Path, project: Dict = None) -> s
     tree.write(output_path, encoding='utf-8', xml_declaration=True)
 
     return str(output_path)
+
+
+def generate_video_player(video_filename: str) -> str:
+    """Generate HTML for video player."""
+    return f"""
+        <section class="glass-card mb-8">
+            <div class="flex items-center space-x-3 mb-6">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                <h2 class="text-2xl font-bold text-white">Test Session Recording</h2>
+            </div>
+
+            <div class="bg-slate-900/50 rounded-lg p-4">
+                <div class="relative" style="padding-bottom: 56.25%; height: 0;">
+                    <video controls class="absolute top-0 left-0 w-full h-full rounded-lg" style="background: #000;">
+                        <source src="videos/{video_filename}" type="video/webm">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div class="mt-4 flex items-center justify-between text-sm text-slate-400">
+                    <span class="flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Full test session recording showing all actions and interactions</span>
+                    </span>
+                    <a href="videos/{video_filename}" download class="text-purple-400 hover:text-purple-300 flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        <span>Download</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    """
 
 
 if __name__ == "__main__":

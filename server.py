@@ -316,7 +316,7 @@ def update_project(project_id):
     projects = load_projects()
     if project_id not in projects:
         return jsonify({'success': False, 'error': 'Project not found'}), 404
-    
+
     data = request.json
     projects[project_id].update({
         'name': data.get('name', projects[project_id]['name']),
@@ -324,6 +324,9 @@ def update_project(project_id):
         'login_url': data.get('login_url', projects[project_id]['login_url']),
         'email': data.get('email', projects[project_id]['email']),
         'password': data.get('password', projects[project_id]['password']),
+        'slack_webhook_url': data.get('slack_webhook_url', projects[project_id].get('slack_webhook_url', '')),
+        'slack_notifications_enabled': data.get('slack_notifications_enabled', projects[project_id].get('slack_notifications_enabled', False)),
+        'slack_notify_on': data.get('slack_notify_on', projects[project_id].get('slack_notify_on', 'failures')),  # all, failures, or daily
     })
     save_projects(projects)
     return jsonify({'success': True})
@@ -467,6 +470,14 @@ def report_screenshot(project_id, report_id, filename):
     if not screenshot_dir.exists():
         return "Screenshots directory not found", 404
     return send_from_directory(screenshot_dir, filename)
+
+@app.route('/reports/<project_id>/<report_id>/videos/<filename>')
+def report_video(project_id, report_id, filename):
+    """Serve report videos."""
+    video_dir = REPORTS_DIR / project_id / report_id / "videos"
+    if not video_dir.exists():
+        return "Videos directory not found", 404
+    return send_from_directory(video_dir, filename)
 
 @app.route('/project/<project_id>/specs', methods=['GET', 'POST'])
 def manage_specs(project_id):
@@ -1116,6 +1127,11 @@ def handle_test(data):
                 security_results = await agent.check_security_headers(response)
                 performance_results = await agent.run_lighthouse_audit()
 
+                # Close browser and capture video
+                video_path = await agent.close()
+                if video_path:
+                    agent.video_path = video_path
+
                 # Generate report with scan data
                 report_data = agent.get_report_data()
                 report_data['accessibility_results'] = accessibility_results
@@ -1131,6 +1147,20 @@ def handle_test(data):
                 report_data['issue_tracking'] = tracking_results
                 report_path = generate_report(report_data, report_dir, project)
 
+                # Send Slack notification if enabled
+                if project.get('slack_notifications_enabled') and project.get('slack_webhook_url'):
+                    try:
+                        from integrations.slack import send_slack_notification
+                        report_url_full = f"{request.url_root.rstrip('/')}/reports/{project_id}/{session_id}"
+                        send_slack_notification(
+                            project.get('slack_webhook_url'),
+                            project.get('name', 'Unknown Project'),
+                            report_data,
+                            report_url_full
+                        )
+                    except Exception as e:
+                        print(f"Failed to send Slack notification: {e}")
+
                 socketio.emit('test_complete', {
                     'result': result,
                     'status': result.get('status', 'completed'),
@@ -1143,8 +1173,11 @@ def handle_test(data):
                 print(f"Test error: {error_msg}")
                 print(traceback.format_exc())
                 socketio.emit('test_error', {'message': error_msg})
-            finally:
-                await agent.close()
+                # Ensure browser is closed even on error
+                try:
+                    await agent.close()
+                except:
+                    pass
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -1220,6 +1253,11 @@ def handle_run_spec(data):
                 security_results = await agent.check_security_headers(response)
                 performance_results = await agent.run_lighthouse_audit()
 
+                # Close browser and capture video
+                video_path = await agent.close()
+                if video_path:
+                    agent.video_path = video_path
+
                 # Generate report with scan data
                 report_data = agent.get_report_data()
                 report_data['specs_results'] = results
@@ -1235,7 +1273,21 @@ def handle_run_spec(data):
                 # Add tracking data to report
                 report_data['issue_tracking'] = tracking_results
                 report_path = generate_report(report_data, report_dir, project)
-                
+
+                # Send Slack notification if enabled
+                if project.get('slack_notifications_enabled') and project.get('slack_webhook_url'):
+                    try:
+                        from integrations.slack import send_slack_notification
+                        report_url_full = f"{request.url_root.rstrip('/')}/reports/{project_id}/{session_id}"
+                        send_slack_notification(
+                            project.get('slack_webhook_url'),
+                            project.get('name', 'Unknown Project'),
+                            report_data,
+                            report_url_full
+                        )
+                    except Exception as e:
+                        print(f"Failed to send Slack notification: {e}")
+
                 socketio.emit('all_specs_complete', {
                     'results': results,
                     'report_url': f'/reports/{project_id}/{session_id}'
@@ -1247,8 +1299,11 @@ def handle_run_spec(data):
                 print(f"Spec test error: {error_msg}")
                 print(traceback.format_exc())
                 socketio.emit('test_error', {'message': error_msg})
-            finally:
-                await agent.close()
+                # Ensure browser is closed even on error
+                try:
+                    await agent.close()
+                except:
+                    pass
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -1385,12 +1440,32 @@ def api_trigger_run():
                             active_runs[run_id]['failed'] += 1
                             active_runs[run_id]['completed'] = idx + 1
 
+                    # Close browser and capture video
+                    video_path = await agent.close()
+                    if video_path:
+                        agent.video_path = video_path
+
                     # Generate report
                     report_data = agent.get_report_data()
                     report_data['results'] = results
                     report_data['metadata'] = metadata
 
                     generate_report(report_data, report_dir, project)
+
+                    # Send Slack notification if enabled
+                    if project.get('slack_notifications_enabled') and project.get('slack_webhook_url'):
+                        try:
+                            from integrations.slack import send_slack_notification
+                            base_url = os.environ.get('BASE_URL', 'http://localhost:8080')
+                            report_url_full = f"{base_url}/reports/{project_id}/{run_id}"
+                            send_slack_notification(
+                                project.get('slack_webhook_url'),
+                                project.get('name', 'Unknown Project'),
+                                report_data,
+                                report_url_full
+                            )
+                        except Exception as e:
+                            print(f"Failed to send Slack notification: {e}")
 
                     # Update final status
                     active_runs[run_id]['status'] = 'completed'
@@ -1401,8 +1476,11 @@ def api_trigger_run():
                 except Exception as e:
                     active_runs[run_id]['status'] = 'failed'
                     active_runs[run_id]['error'] = str(e)
-                finally:
-                    await agent.close()
+                    # Ensure browser is closed even on error
+                    try:
+                        await agent.close()
+                    except:
+                        pass
 
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)

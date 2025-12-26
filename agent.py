@@ -46,6 +46,7 @@ class AlphaTestAgent:
         self.step_count = 0
         self.session_dir = None
         self.current_test = None
+        self.video_path = None
 
         # Performance and error tracking
         self.console_logs = []
@@ -79,6 +80,15 @@ class AlphaTestAgent:
             ]
         )
 
+        # Setup session directory first
+        if session_dir:
+            self.session_dir = Path(session_dir)
+        else:
+            self.session_dir = Path("./reports") / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        (self.session_dir / "screenshots").mkdir(parents=True, exist_ok=True)
+        (self.session_dir / "videos").mkdir(parents=True, exist_ok=True)
+
         # Create context with settings optimized for rendering
         context = await self.browser.new_context(
             viewport={'width': 1920, 'height': 1080},
@@ -91,29 +101,39 @@ class AlphaTestAgent:
             reduced_motion='no-preference',
             forced_colors='none',
             java_script_enabled=True,
-            bypass_csp=True
+            bypass_csp=True,
+            record_video={
+                'dir': str(self.session_dir / "videos"),
+                'size': {'width': 1920, 'height': 1080}
+            }
         )
 
         self.page = await context.new_page()
+        self.context = context
 
         # Setup console and error listeners
         self.page.on("console", lambda msg: self._handle_console(msg))
         self.page.on("pageerror", lambda err: self._handle_page_error(err))
         self.page.on("requestfailed", lambda req: self._handle_network_error(req))
 
-        # Setup session directory
-        if session_dir:
-            self.session_dir = Path(session_dir)
-        else:
-            self.session_dir = Path("./reports") / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-        (self.session_dir / "screenshots").mkdir(parents=True, exist_ok=True)
         self.status("✓ Browser ready!")
-    
+
     async def close(self):
-        """Close browser."""
+        """Close browser and save video."""
+        video_path = None
+        try:
+            # Get video path before closing
+            if self.page and self.page.video:
+                video_path = await self.page.video.path()
+                if video_path:
+                    self.status(f"📹 Video saved: {Path(video_path).name}")
+        except Exception as e:
+            self.status(f"⚠️ Could not save video: {e}")
+
         if self.browser:
             await self.browser.close()
+
+        return video_path
 
     def _handle_console(self, msg):
         """Capture console messages."""
@@ -1885,6 +1905,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             'results': self.results,
             'issues': self.issues,
             'screenshots': self.screenshots,
+            'video_path': str(self.video_path) if self.video_path else None,
             'steps': self.steps,
             'console_logs': self.console_logs,
             'console_errors': self.console_errors,
