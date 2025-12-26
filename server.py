@@ -648,7 +648,47 @@ def manage_specs(project_id):
         save_projects(projects)
         return jsonify({'success': True})
 
-    return jsonify({'specs': projects[project_id].get('test_specs', [])})
+    return jsonify({'specs': projects[project_id].get('test_specs', [])}
+
+)
+
+@app.route('/api/project/<project_id>/visual/baselines', methods=['GET'])
+def get_visual_baselines(project_id):
+    """Get list of visual regression baselines."""
+    from visual_regression import VisualRegressionTester
+
+    project_dir = REPORTS_DIR / project_id
+    vrt = VisualRegressionTester(project_dir)
+    baselines = vrt.get_baselines()
+
+    return jsonify({'baselines': baselines})
+
+@app.route('/api/project/<project_id>/visual/baseline/<baseline_name>', methods=['DELETE'])
+def delete_visual_baseline(project_id, baseline_name):
+    """Delete a visual regression baseline."""
+    from visual_regression import VisualRegressionTester
+
+    project_dir = REPORTS_DIR / project_id
+    vrt = VisualRegressionTester(project_dir)
+    success = vrt.delete_baseline(baseline_name)
+
+    return jsonify({'success': success})
+
+@app.route('/project/<project_id>/baselines/<filename>')
+def serve_baseline(project_id, filename):
+    """Serve baseline images."""
+    baselines_dir = REPORTS_DIR / project_id / "baselines"
+    if not baselines_dir.exists():
+        return "Baselines directory not found", 404
+    return send_from_directory(baselines_dir, filename)
+
+@app.route('/project/<project_id>/diffs/<filename>')
+def serve_diff(project_id, filename):
+    """Serve diff images."""
+    diffs_dir = REPORTS_DIR / project_id / "diffs"
+    if not diffs_dir.exists():
+        return "Diffs directory not found", 404
+    return send_from_directory(diffs_dir, filename)
 
 
 @app.route('/issues')

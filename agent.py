@@ -19,6 +19,7 @@ from typing import Optional, List, Dict, Any, Callable
 
 from playwright.async_api import async_playwright, Page, Browser
 import anthropic
+from visual_regression import VisualRegressionTester
 
 
 class AlphaTestAgent:
@@ -56,6 +57,10 @@ class AlphaTestAgent:
         self.network_errors = []
         self.performance_metrics = []
         self.page_timings = {}
+
+        # Visual regression testing
+        self.visual_regressions = []
+        self.vrt = None
 
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
@@ -116,6 +121,12 @@ class AlphaTestAgent:
 
         (self.session_dir / "screenshots").mkdir(parents=True, exist_ok=True)
         (self.session_dir / "videos").mkdir(parents=True, exist_ok=True)
+
+        # Initialize visual regression tester
+        # Use parent directory (project directory) for baselines
+        if self.session_dir:
+            project_dir = self.session_dir.parent
+            self.vrt = VisualRegressionTester(project_dir)
 
         # Create context with settings optimized for rendering
         context = await self.browser.new_context(
@@ -756,6 +767,68 @@ class AlphaTestAgent:
 
         # Default text
         return f"Test Data {random.randint(100, 999)}"
+
+    async def visual_regression_check(
+        self,
+        name: str,
+        set_baseline: bool = False,
+        threshold: float = 0.1
+    ) -> Dict:
+        """
+        Perform visual regression check against baseline.
+
+        Args:
+            name: Name of the visual checkpoint
+            set_baseline: If True, set current screenshot as baseline
+            threshold: Difference threshold (0.0-1.0), lower is more strict
+
+        Returns:
+            Dictionary with comparison results
+        """
+        if not self.vrt:
+            return {'error': 'Visual regression tester not initialized'}
+
+        try:
+            # Take screenshot
+            screenshot_path = await self.screenshot(f"visual_check_{name}")
+            screenshot_file = self.session_dir / "screenshots" / f"{screenshot_path}.png"
+
+            if set_baseline:
+                # Set this screenshot as the baseline
+                success = self.vrt.set_baseline(name, screenshot_file)
+                result = {
+                    'name': name,
+                    'action': 'baseline_set',
+                    'success': success,
+                    'screenshot': str(screenshot_file)
+                }
+                self.status(f"   📸 Visual baseline set: {name}")
+            else:
+                # Compare against baseline
+                result = self.vrt.compare(name, screenshot_file, threshold=threshold)
+
+                # Track visual regressions
+                if not result.get('matched', True):
+                    self.visual_regressions.append(result)
+                    self.status(f"   ⚠️ Visual regression detected: {name} ({result['diff_percentage']:.2f}% different)")
+
+                    # Add as issue
+                    self.issues.append({
+                        'type': 'visual_regression',
+                        'message': f"Visual regression detected: {name}",
+                        'severity': 'medium',
+                        'diff_percentage': result['diff_percentage'],
+                        'diff_image': result.get('diff_image_path'),
+                        'timestamp': datetime.now().isoformat()
+                    })
+                else:
+                    self.status(f"   ✓ Visual check passed: {name} ({result['diff_percentage']:.2f}% different)")
+
+            return result
+
+        except Exception as e:
+            self.status(f"   ⚠️ Visual regression check failed: {e}")
+            return {'error': str(e)}
 
     async def wait_for_stable(self, timeout: int = 5000):
         """Wait for page to be stable (no loading, animations complete)."""
@@ -1934,6 +2007,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             'issues': self.issues,
             'screenshots': self.screenshots,
             'video_path': str(self.video_path) if self.video_path else None,
+            'visual_regressions': self.visual_regressions,
             'steps': self.steps,
             'console_logs': self.console_logs,
             'console_errors': self.console_errors,
