@@ -49,7 +49,6 @@ docs/
 
 # Test files
 tests/
-test_*.py
 *_test.py
 
 # CI/CD
