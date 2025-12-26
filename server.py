@@ -808,6 +808,73 @@ def generate_test_data(project_id):
         return jsonify({'error': str(e)}), 500
 
 
+# API Testing Endpoints
+@app.route('/api/project/<project_id>/api-test/request', methods=['POST'])
+def api_test_request(project_id):
+    """Make an API test request."""
+    from api_testing import APITester
+
+    data = request.get_json()
+    method = data.get('method', 'GET')
+    endpoint = data.get('endpoint')
+    headers = data.get('headers', {})
+    query_params = data.get('query_params', {})
+    json_body = data.get('json_body')
+    base_url = data.get('base_url', '')
+
+    if not endpoint:
+        return jsonify({'error': 'endpoint is required'}), 400
+
+    try:
+        # Create API tester
+        api_tester = APITester(base_url=base_url, default_headers=headers)
+
+        # Make request (without page for now - would need active session)
+        # This endpoint is for standalone API testing
+        import asyncio
+        from aiohttp import ClientSession
+
+        async def make_request():
+            async with ClientSession() as session:
+                url = endpoint if endpoint.startswith('http') else f"{base_url}/{endpoint.lstrip('/')}"
+
+                if query_params:
+                    from urllib.parse import urlencode
+                    url = f"{url}?{urlencode(query_params)}"
+
+                kwargs = {'headers': headers}
+                if json_body:
+                    import json
+                    kwargs['json'] = json_body
+
+                async with session.request(method, url, **kwargs) as resp:
+                    response_body = await resp.text()
+                    try:
+                        response_body = json.loads(response_body)
+                    except:
+                        pass
+
+                    return {
+                        'status_code': resp.status,
+                        'headers': dict(resp.headers),
+                        'body': response_body
+                    }
+
+        # Run async request
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(make_request())
+        loop.close()
+
+        return jsonify({
+            'success': True,
+            'response': result
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/issues')
 def issues_dashboard():
     """View all issues across projects."""

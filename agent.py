@@ -22,6 +22,7 @@ import anthropic
 from visual_regression import VisualRegressionTester
 from assertions import Assertions, TestPatterns, AssertionResult
 from test_data import TestDataManager
+from api_testing import APITester, APIResponse, APIAssertion
 
 
 class AlphaTestAgent:
@@ -70,6 +71,10 @@ class AlphaTestAgent:
 
         # Test data management
         self.test_data_manager = None
+
+        # API testing
+        self.api_tester = None
+        self.api_responses = []
 
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
@@ -159,6 +164,12 @@ class AlphaTestAgent:
 
         self.page = await context.new_page()
         self.context = context
+
+        # Initialize API tester with page object
+        self.api_tester = APITester(
+            base_url="",  # Will be set dynamically based on test URL
+            default_headers={"User-Agent": "AlphaTest/2.0"}
+        )
 
         # Setup console and error listeners
         self.page.on("console", lambda msg: self._handle_console(msg))
@@ -1001,6 +1012,170 @@ class AlphaTestAgent:
 
         except Exception as e:
             self.status(f"   ⚠️ Error generating test data: {e}")
+            return None
+
+    async def api_request(
+        self,
+        method: str,
+        endpoint: str,
+        **kwargs
+    ) -> Optional[APIResponse]:
+        """
+        Make an API request.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, PATCH, DELETE)
+            endpoint: API endpoint
+            **kwargs: Additional request parameters
+
+        Returns:
+            APIResponse object or None on error
+        """
+        try:
+            if not self.api_tester:
+                self.status(f"   ⚠️ API tester not initialized")
+                return None
+
+            # Pass the page object to the request
+            kwargs['page'] = self.page
+
+            self.status(f"   🌐 {method.upper()} {endpoint}")
+            response = await self.api_tester.request(method, endpoint, **kwargs)
+
+            # Track response
+            self.api_responses.append(response.to_dict())
+
+            # Log response
+            status_icon = "✓" if 200 <= response.status_code < 300 else "⚠️"
+            self.status(f"   {status_icon} Status {response.status_code} ({response.response_time_ms:.2f}ms)")
+
+            return response
+
+        except Exception as e:
+            self.status(f"   ⚠️ API request error: {e}")
+            return None
+
+    async def api_get(self, endpoint: str, **kwargs) -> Optional[APIResponse]:
+        """Make a GET API request."""
+        return await self.api_request('GET', endpoint, **kwargs)
+
+    async def api_post(self, endpoint: str, **kwargs) -> Optional[APIResponse]:
+        """Make a POST API request."""
+        return await self.api_request('POST', endpoint, **kwargs)
+
+    async def api_put(self, endpoint: str, **kwargs) -> Optional[APIResponse]:
+        """Make a PUT API request."""
+        return await self.api_request('PUT', endpoint, **kwargs)
+
+    async def api_patch(self, endpoint: str, **kwargs) -> Optional[APIResponse]:
+        """Make a PATCH API request."""
+        return await self.api_request('PATCH', endpoint, **kwargs)
+
+    async def api_delete(self, endpoint: str, **kwargs) -> Optional[APIResponse]:
+        """Make a DELETE API request."""
+        return await self.api_request('DELETE', endpoint, **kwargs)
+
+    async def graphql_query(
+        self,
+        query: str,
+        variables: Dict = None,
+        endpoint: str = '/graphql',
+        **kwargs
+    ) -> Optional[APIResponse]:
+        """
+        Execute a GraphQL query.
+
+        Args:
+            query: GraphQL query string
+            variables: Query variables
+            endpoint: GraphQL endpoint
+            **kwargs: Additional request parameters
+
+        Returns:
+            APIResponse object or None on error
+        """
+        try:
+            if not self.api_tester:
+                self.status(f"   ⚠️ API tester not initialized")
+                return None
+
+            kwargs['page'] = self.page
+            self.status(f"   🔍 GraphQL Query")
+
+            response = await self.api_tester.graphql(query, variables, endpoint, **kwargs)
+
+            # Track response
+            self.api_responses.append(response.to_dict())
+
+            # Log response
+            status_icon = "✓" if 200 <= response.status_code < 300 else "⚠️"
+            self.status(f"   {status_icon} Status {response.status_code} ({response.response_time_ms:.2f}ms)")
+
+            return response
+
+        except Exception as e:
+            self.status(f"   ⚠️ GraphQL query error: {e}")
+            return None
+
+    async def api_assert(
+        self,
+        response: APIResponse,
+        assertion_type: str,
+        **kwargs
+    ) -> Optional[APIAssertion]:
+        """
+        Run an API assertion.
+
+        Args:
+            response: APIResponse to assert on
+            assertion_type: Type of assertion (status_code, response_time, etc.)
+            **kwargs: Assertion parameters
+
+        Returns:
+            APIAssertion result or None on error
+        """
+        try:
+            if not self.api_tester or not response:
+                return None
+
+            # Map assertion types to methods
+            assertion_methods = {
+                'status_code': lambda: self.api_tester.assert_status_code(response, kwargs.get('expected')),
+                'status_in': lambda: self.api_tester.assert_status_in(response, kwargs.get('expected_codes', [])),
+                'response_time': lambda: self.api_tester.assert_response_time(response, kwargs.get('max_ms')),
+                'header_present': lambda: self.api_tester.assert_header_present(response, kwargs.get('header')),
+                'header_value': lambda: self.api_tester.assert_header_value(response, kwargs.get('header'), kwargs.get('value')),
+                'json_path': lambda: self.api_tester.assert_json_path(response, kwargs.get('path'), kwargs.get('expected')),
+                'json_contains': lambda: self.api_tester.assert_json_contains(response, kwargs.get('key')),
+                'body_contains': lambda: self.api_tester.assert_body_contains(response, kwargs.get('text'))
+            }
+
+            assertion_method = assertion_methods.get(assertion_type)
+            if not assertion_method:
+                self.status(f"   ⚠️ Unknown assertion type: {assertion_type}")
+                return None
+
+            assertion = assertion_method()
+
+            # Log assertion
+            status_icon = "✓" if assertion.passed else "✗"
+            self.status(f"   {status_icon} {assertion.message}")
+
+            # Create issue if failed
+            if not assertion.passed:
+                self.issues.append({
+                    'type': 'api_assertion_failed',
+                    'message': assertion.message,
+                    'severity': 'high',
+                    'assertion_type': assertion_type,
+                    'details': assertion.details,
+                    'timestamp': assertion.timestamp
+                })
+
+            return assertion
+
+        except Exception as e:
+            self.status(f"   ⚠️ API assertion error: {e}")
             return None
 
     async def wait_for_stable(self, timeout: int = 5000):
@@ -2180,6 +2355,11 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
         if self.test_data_manager:
             available_fixtures = self.test_data_manager.list_fixtures()
 
+        # Get API test results if API tester is initialized
+        api_assertions = []
+        if self.api_tester:
+            api_assertions = [a.to_dict() for a in self.api_tester.get_assertions()]
+
         return {
             'results': self.results,
             'issues': self.issues,
@@ -2195,6 +2375,8 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             'session_dir': str(self.session_dir) if self.session_dir else None,
             'browser_type': self.browser_type,
             'available_fixtures': available_fixtures,
+            'api_responses': self.api_responses,
+            'api_assertions': api_assertions,
             'generated_at': datetime.now().isoformat()
         }
 
