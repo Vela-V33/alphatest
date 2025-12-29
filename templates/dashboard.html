@@ -1,32 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AlphaTest - Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/alphatest-logo.svg">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
 </head>
 <body>
-    <!-- Background Pattern -->
-    <div class="bg-pattern"></div>
-
     <!-- Content Wrapper -->
-    <div class="relative z-10 min-h-screen">
+    <div class="min-h-screen" style="background: var(--bg-secondary);">
         <!-- Header -->
         <header class="header-glass">
-            <div class="container mx-auto px-6 py-5">
+            <div class="container mx-auto px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <img src="/static/images/alphatest-logo.svg" alt="AlphaTest Logo" class="h-12 w-12">
+                        <img src="/static/images/alphatest-logo.svg" alt="AlphaTest Logo" class="h-10 w-10">
                         <div>
-                            <h1 class="text-2xl font-bold logo-text">AlphaTest</h1>
-                            <p class="text-slate-400 text-sm">AI-Powered UAT Testing</p>
+                            <h1 class="text-xl font-medium logo-text">AlphaTest</h1>
+                            <p class="text-xs" style="color: var(--text-secondary);">AI-Powered UAT Testing</p>
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
+                        <!-- Theme Toggle -->
+                        <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                            <svg id="lightIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                            </svg>
+                            <svg id="darkIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                            </svg>
+                        </button>
                         <a href="/issues" class="btn-secondary flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
@@ -41,7 +47,7 @@
                         </a>
                         {% if user %}
                         <div class="flex items-center space-x-3">
-                            <span class="text-sm text-slate-400">{{ user.name or user.email }}</span>
+                            <span class="text-sm" style="color: var(--text-secondary);">{{ user.name or user.email }}</span>
                             <a href="/logout" class="btn-secondary">Logout</a>
                         </div>
                         {% endif %}
@@ -55,13 +61,13 @@
             {% if not projects %}
             <!-- Empty State -->
             <div class="glass-card p-12 text-center max-w-2xl mx-auto mt-12">
-                <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-20 h-20 mx-auto mb-6 rounded-full stat-icon-blue flex items-center justify-center">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                 </div>
-                <h2 class="text-2xl font-bold text-white mb-3">Welcome to AlphaTest!</h2>
-                <p class="text-slate-400 mb-8 max-w-md mx-auto">
+                <h2 class="text-2xl font-medium mb-3" style="color: var(--text-primary);">Welcome to AlphaTest</h2>
+                <p class="mb-8 max-w-md mx-auto" style="color: var(--text-secondary);">
                     Start by creating your first project. Our AI will analyze your app and help you create comprehensive test scenarios.
                 </p>
                 <a href="/project/new" class="btn-primary inline-flex items-center space-x-2">
@@ -76,13 +82,15 @@
             <!-- Stats Overview -->
             <div class="grid md:grid-cols-4 gap-6 mb-8">
                 <div class="glass-card p-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-slate-400 text-sm">Total Projects</span>
-                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                        </svg>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-medium" style="color: var(--text-secondary);">Total Projects</span>
+                        <div class="stat-icon stat-icon-blue">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                            </svg>
+                        </div>
                     </div>
-                    <div class="text-3xl font-bold text-white">{{ projects|length }}</div>
+                    <div class="text-3xl font-medium" style="color: var(--text-primary);">{{ projects|length }}</div>
                 </div>
 
                 {% set total_tests = namespace(count=0) %}
@@ -93,13 +101,15 @@
                 {% endfor %}
 
                 <div class="glass-card p-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-slate-400 text-sm">Total Tests</span>
-                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                        </svg>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-medium" style="color: var(--text-secondary);">Total Tests</span>
+                        <div class="stat-icon stat-icon-green">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                        </div>
                     </div>
-                    <div class="text-3xl font-bold text-white">{{ total_tests.count }}</div>
+                    <div class="text-3xl font-medium" style="color: var(--text-primary);">{{ total_tests.count }}</div>
                 </div>
 
                 {% set total_runs = namespace(count=0) %}
@@ -110,14 +120,16 @@
                 {% endfor %}
 
                 <div class="glass-card p-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-slate-400 text-sm">Test Runs</span>
-                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-medium" style="color: var(--text-secondary);">Test Runs</span>
+                        <div class="stat-icon stat-icon-yellow">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
                     </div>
-                    <div class="text-3xl font-bold text-white">{{ total_runs.count }}</div>
+                    <div class="text-3xl font-medium" style="color: var(--text-primary);">{{ total_runs.count }}</div>
                 </div>
 
                 {% set analyzed_count = namespace(count=0) %}
@@ -128,13 +140,15 @@
                 {% endfor %}
 
                 <div class="glass-card p-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-slate-400 text-sm">Analyzed</span>
-                        <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-medium" style="color: var(--text-secondary);">Analyzed</span>
+                        <div class="stat-icon stat-icon-blue">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
                     </div>
-                    <div class="text-3xl font-bold text-white">{{ analyzed_count.count }}</div>
+                    <div class="text-3xl font-medium" style="color: var(--text-primary);">{{ analyzed_count.count }}</div>
                 </div>
             </div>
 
@@ -149,7 +163,7 @@
                             class="input-glass w-full text-sm"
                         >
                     </div>
-                    <select id="filterStatus" class="input-glass text-sm">
+                    <select id="filterStatus" class="input-glass text-sm" style="width: auto; min-width: 150px;">
                         <option value="all">All Projects</option>
                         <option value="analyzed">Analyzed</option>
                         <option value="new">New</option>
@@ -160,8 +174,8 @@
             <!-- Projects Section -->
             <div class="mb-10">
                 <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold text-white">Your Projects</h2>
-                    <span class="text-slate-500 text-sm" id="projectCount">{{ projects|length }} project{% if projects|length != 1 %}s{% endif %}</span>
+                    <h2 class="text-xl font-medium" style="color: var(--text-primary);">Your Projects</h2>
+                    <span class="text-sm" style="color: var(--text-disabled);" id="projectCount">{{ projects|length }} project{% if projects|length != 1 %}s{% endif %}</span>
                 </div>
 
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="projectsGrid">
@@ -170,8 +184,8 @@
                        data-name="{{ project.name|lower }}"
                        data-status="{{ 'analyzed' if project.crawl_data else 'new' }}">
                         <div class="flex items-start justify-between mb-4">
-                            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-12 h-12 rounded-lg stat-icon-blue flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
                                 </svg>
                             </div>
@@ -182,18 +196,18 @@
                             {% endif %}
                         </div>
 
-                        <h3 class="font-semibold text-white text-lg mb-1">{{ project.name }}</h3>
-                        <p class="text-slate-400 text-sm truncate mb-4">{{ project.url }}</p>
+                        <h3 class="font-medium text-lg mb-1" style="color: var(--text-primary);">{{ project.name }}</h3>
+                        <p class="text-sm truncate mb-4" style="color: var(--text-secondary);">{{ project.url }}</p>
 
                         <!-- Project Stats -->
                         <div class="grid grid-cols-2 gap-3 mb-4 text-xs">
-                            <div class="flex items-center space-x-2 text-slate-500">
+                            <div class="flex items-center space-x-2" style="color: var(--text-disabled);">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                 </svg>
                                 <span>{{ project.test_specs|length if project.test_specs else 0 }} tests</span>
                             </div>
-                            <div class="flex items-center space-x-2 text-slate-500">
+                            <div class="flex items-center space-x-2" style="color: var(--text-disabled);">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -215,12 +229,12 @@
 
                     <!-- Add New Card -->
                     <a href="/project/new" class="glass-card add-card p-6 flex flex-col items-center justify-center text-center min-h-[240px] group">
-                        <div class="w-12 h-12 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center mb-3 group-hover:border-blue-500 transition-colors">
-                            <svg class="w-6 h-6 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-12 h-12 rounded-full border-2 border-dashed flex items-center justify-center mb-3 transition-colors" style="border-color: var(--border-color);">
+                            <svg class="w-6 h-6 transition-colors" style="color: var(--text-disabled);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                             </svg>
                         </div>
-                        <span class="text-slate-400 group-hover:text-blue-400 transition-colors">Add New Project</span>
+                        <span class="transition-colors" style="color: var(--text-secondary);">Add New Project</span>
                     </a>
                 </div>
             </div>
@@ -228,35 +242,35 @@
 
             <!-- How It Works Section -->
             <div class="glass-card p-8 mt-8">
-                <h2 class="text-xl font-semibold text-white mb-6 text-center">How It Works</h2>
+                <h2 class="text-xl font-medium mb-6 text-center" style="color: var(--text-primary);">How It Works</h2>
                 <div class="grid md:grid-cols-4 gap-8">
                     <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
-                            <span class="text-xl font-bold text-blue-400">1</span>
+                        <div class="w-12 h-12 rounded-full stat-icon-blue flex items-center justify-center mx-auto mb-4">
+                            <span class="text-xl font-medium">1</span>
                         </div>
-                        <h3 class="font-semibold text-white mb-2">Add Project</h3>
-                        <p class="text-slate-400 text-sm">Enter your app URL and credentials</p>
+                        <h3 class="font-medium mb-2" style="color: var(--text-primary);">Add Project</h3>
+                        <p class="text-sm" style="color: var(--text-secondary);">Enter your app URL and credentials</p>
                     </div>
                     <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                            <span class="text-xl font-bold text-purple-400">2</span>
+                        <div class="w-12 h-12 rounded-full stat-icon-green flex items-center justify-center mx-auto mb-4">
+                            <span class="text-xl font-medium">2</span>
                         </div>
-                        <h3 class="font-semibold text-white mb-2">Analyze App</h3>
-                        <p class="text-slate-400 text-sm">AI crawls and understands your app</p>
+                        <h3 class="font-medium mb-2" style="color: var(--text-primary);">Analyze App</h3>
+                        <p class="text-sm" style="color: var(--text-secondary);">AI crawls and understands your app</p>
                     </div>
                     <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                            <span class="text-xl font-bold text-green-400">3</span>
+                        <div class="w-12 h-12 rounded-full stat-icon-yellow flex items-center justify-center mx-auto mb-4">
+                            <span class="text-xl font-medium">3</span>
                         </div>
-                        <h3 class="font-semibold text-white mb-2">Run Tests</h3>
-                        <p class="text-slate-400 text-sm">Use suggested or custom tests</p>
+                        <h3 class="font-medium mb-2" style="color: var(--text-primary);">Run Tests</h3>
+                        <p class="text-sm" style="color: var(--text-secondary);">Use suggested or custom tests</p>
                     </div>
                     <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
-                            <span class="text-xl font-bold text-yellow-400">4</span>
+                        <div class="w-12 h-12 rounded-full stat-icon-red flex items-center justify-center mx-auto mb-4">
+                            <span class="text-xl font-medium">4</span>
                         </div>
-                        <h3 class="font-semibold text-white mb-2">Get Report</h3>
-                        <p class="text-slate-400 text-sm">Screenshots, issues, UX tips</p>
+                        <h3 class="font-medium mb-2" style="color: var(--text-primary);">Get Report</h3>
+                        <p class="text-sm" style="color: var(--text-secondary);">Screenshots, issues, UX tips</p>
                     </div>
                 </div>
             </div>
@@ -264,11 +278,41 @@
 
         <!-- Footer -->
         <footer class="container mx-auto px-6 py-8 text-center">
-            <p class="text-slate-500 text-sm">AlphaTest v2.0 — AI-Powered UAT Testing</p>
+            <p class="text-sm" style="color: var(--text-disabled);">AlphaTest v2.0 — AI-Powered UAT Testing</p>
         </footer>
     </div>
 
     <script>
+        // Theme management
+        const html = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('lightIcon');
+        const darkIcon = document.getElementById('darkIcon');
+
+        // Get saved theme or default to light
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        updateThemeIcons(savedTheme);
+
+        function updateThemeIcons(theme) {
+            if (theme === 'dark') {
+                darkIcon.classList.remove('hidden');
+                lightIcon.classList.add('hidden');
+            } else {
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
+            }
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcons(newTheme);
+        });
+
         // Search and filter functionality
         const searchInput = document.getElementById('searchProjects');
         const filterStatus = document.getElementById('filterStatus');
@@ -296,7 +340,7 @@
             });
 
             if (projectCount) {
-                projectCount.textContent = `${visibleCount} project${visibleCount !== 1 ? 's' : ''}`;
+                projectCount.textContent = visibleCount + ' project' + (visibleCount !== 1 ? 's' : '');
             }
         }
 
