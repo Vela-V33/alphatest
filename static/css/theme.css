@@ -2,23 +2,29 @@
 
 /* Light Theme Colors (Default) */
 :root[data-theme="light"] {
-    /* Google Brand Colors */
-    --google-blue: #4285f4;
+    /* AlphaTest Brand Colors - Cyan/Sky Blue */
+    --alphatest-cyan: #00D9FF;
+    --alphatest-cyan-dark: #00B8D4;
+    --alphatest-sky: #0EA5E9;
+    --alphatest-sky-dark: #0284C7;
+
+    /* For compatibility */
+    --google-blue: #0EA5E9;
     --google-red: #ea4335;
     --google-yellow: #fbbc04;
     --google-green: #34a853;
 
-    /* Material Design Blue Palette */
-    --primary-50: #e8f0fe;
-    --primary-100: #d2e3fc;
-    --primary-200: #aecbfa;
-    --primary-300: #8ab4f8;
-    --primary-400: #669df6;
-    --primary-500: #4285f4;
-    --primary-600: #1a73e8;
-    --primary-700: #1967d2;
-    --primary-800: #185abc;
-    --primary-900: #174ea6;
+    /* Material Design Cyan/Sky Palette */
+    --primary-50: #e0f7ff;
+    --primary-100: #b3ecff;
+    --primary-200: #80e1ff;
+    --primary-300: #4dd5ff;
+    --primary-400: #26ccff;
+    --primary-500: #00D9FF;
+    --primary-600: #00B8D4;
+    --primary-700: #0EA5E9;
+    --primary-800: #0284C7;
+    --primary-900: #075985;
 
     /* Backgrounds */
     --bg-primary: #ffffff;
@@ -62,23 +68,29 @@
 
 /* Dark Theme Colors */
 :root[data-theme="dark"] {
-    /* Google Brand Colors */
-    --google-blue: #8ab4f8;
+    /* AlphaTest Brand Colors - Cyan/Sky Blue (Dark) */
+    --alphatest-cyan: #4dd5ff;
+    --alphatest-cyan-dark: #26ccff;
+    --alphatest-sky: #38bdf8;
+    --alphatest-sky-dark: #0ea5e9;
+
+    /* For compatibility */
+    --google-blue: #38bdf8;
     --google-red: #f28b82;
     --google-yellow: #fdd663;
     --google-green: #81c995;
 
-    /* Material Design Blue Palette (Dark) */
-    --primary-50: #174ea6;
-    --primary-100: #185abc;
-    --primary-200: #1967d2;
-    --primary-300: #1a73e8;
-    --primary-400: #4285f4;
-    --primary-500: #8ab4f8;
-    --primary-600: #aecbfa;
-    --primary-700: #d2e3fc;
-    --primary-800: #e8f0fe;
-    --primary-900: #f1f7ff;
+    /* Material Design Cyan/Sky Palette (Dark) */
+    --primary-50: #075985;
+    --primary-100: #0284C7;
+    --primary-200: #0EA5E9;
+    --primary-300: #00B8D4;
+    --primary-400: #00D9FF;
+    --primary-500: #38bdf8;
+    --primary-600: #7dd3fc;
+    --primary-700: #bae6fd;
+    --primary-800: #e0f2fe;
+    --primary-900: #f0f9ff;
 
     /* Backgrounds */
     --bg-primary: #202124;
@@ -336,21 +348,21 @@ h3 { font-size: 1.25rem; }
     color: var(--text-secondary);
 }
 
-/* Logo Text with Google Colors */
+/* Logo Text with AlphaTest Cyan Gradient */
 .logo-text {
     font-weight: 500;
     letter-spacing: -0.5px;
 }
 
 [data-theme="light"] .logo-text {
-    background: linear-gradient(135deg, var(--google-blue) 0%, var(--google-green) 100%);
+    background: linear-gradient(135deg, var(--alphatest-cyan) 0%, var(--alphatest-sky) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
 [data-theme="dark"] .logo-text {
-    background: linear-gradient(135deg, #8ab4f8 0%, #81c995 100%);
+    background: linear-gradient(135deg, var(--alphatest-cyan) 0%, var(--alphatest-sky) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -367,8 +379,8 @@ h3 { font-size: 1.25rem; }
 }
 
 .stat-icon-blue {
-    background: rgba(66, 133, 244, 0.1);
-    color: var(--google-blue);
+    background: rgba(14, 165, 233, 0.1);
+    color: var(--alphatest-sky);
 }
 
 .stat-icon-green {
@@ -394,8 +406,8 @@ h3 { font-size: 1.25rem; }
 }
 
 .add-card:hover {
-    border-color: var(--google-blue);
-    background: rgba(66, 133, 244, 0.04);
+    border-color: var(--alphatest-sky);
+    background: rgba(14, 165, 233, 0.04);
     transform: translateY(-1px);
 }
 

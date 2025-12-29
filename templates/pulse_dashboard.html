@@ -77,11 +77,11 @@
             <div class="glass-card p-6">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Pass Rate</h3>
-                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <div class="text-3xl font-bold text-green-400" id="passRate">--</div>
+                <div class="text-3xl font-bold text-cyan-400" id="passRate">--</div>
                 <p class="text-xs text-slate-500 mt-1">Last 10 runs</p>
             </div>
 
@@ -180,7 +180,7 @@
                                     ACTIVE
                                 </span>
                                 {% else %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 border border-green-500/30 text-green-400">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
                                     FIXED
                                 </span>
                                 {% endif %}
@@ -368,7 +368,7 @@
 
         // Render insights
         insights.forEach(insight => {
-            const colorClass = insight.type === 'positive' ? 'text-green-400 bg-green-500/10 border-green-500/30' :
+            const colorClass = insight.type === 'positive' ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' :
                               insight.type === 'negative' ? 'text-red-400 bg-red-500/10 border-red-500/30' :
                               'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
 
