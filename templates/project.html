@@ -1,20 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ project.name }} - AlphaTest</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
 </head>
 <body>
-    <!-- Background Pattern -->
-    <div class="bg-pattern"></div>
-
     <!-- Content Wrapper -->
-    <div class="relative z-10 min-h-screen">
+    <div class="min-h-screen" style="background: var(--bg-secondary);">
         <!-- Header -->
         <header class="header-glass">
             <div class="container mx-auto px-6 py-4">
@@ -30,6 +28,15 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
+                        <!-- Theme Toggle -->
+                        <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                            <svg id="lightIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                            </svg>
+                            <svg id="darkIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                            </svg>
+                        </button>
                         <a href="/project/{{ project.id }}/pulse" class="btn-secondary text-sm flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -152,27 +159,79 @@
                     </div>
                 </div>
                 {% else %}
-                <div class="glass-card p-10 text-center max-w-xl mx-auto">
-                    <div class="icon-container-lg mx-auto mb-6">
-                        <svg class="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+                <div class="glass-card p-10 max-w-3xl mx-auto">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 mx-auto mb-6 rounded-full stat-icon-blue flex items-center justify-center">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-medium mb-3" style="color: var(--text-primary);">Analyze Your App</h3>
+                        <p class="text-base mb-2" style="color: var(--text-secondary);">Let AlphaTest AI automatically crawl your application to discover all pages, features, and user flows.</p>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Analyze Your App</h3>
-                    <p class="text-slate-400 mb-6">Let AI crawl your app to discover pages, features, and suggest tests.</p>
-                    <button onclick="startCrawl()" id="crawlBtn" class="btn-primary inline-flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <span>Start Analysis</span>
-                    </button>
+
+                    <!-- What happens section -->
+                    <div class="glass-card p-6 mb-6" style="background: var(--surface-variant);">
+                        <h4 class="font-medium mb-4" style="color: var(--text-primary);">What happens during analysis:</h4>
+                        <div class="space-y-3">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-6 h-6 rounded-full stat-icon-blue flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-sm font-medium">1</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium" style="color: var(--text-primary);">Crawl All Pages</p>
+                                    <p class="text-sm" style="color: var(--text-secondary);">AI navigates through your app, discovering all accessible pages and routes</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="w-6 h-6 rounded-full stat-icon-blue flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-sm font-medium">2</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium" style="color: var(--text-primary);">Identify Features</p>
+                                    <p class="text-sm" style="color: var(--text-secondary);">Detects forms, buttons, navigation menus, and interactive elements</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="w-6 h-6 rounded-full stat-icon-blue flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-sm font-medium">3</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium" style="color: var(--text-primary);">Generate Test Suggestions</p>
+                                    <p class="text-sm" style="color: var(--text-secondary);">Creates recommended test scenarios based on discovered features</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="w-6 h-6 rounded-full stat-icon-blue flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="text-sm font-medium">4</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium" style="color: var(--text-primary);">Build Sitemap</p>
+                                    <p class="text-sm" style="color: var(--text-secondary);">Maps out your application structure for comprehensive testing coverage</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action button -->
+                    <div class="text-center">
+                        <p class="text-sm mb-4" style="color: var(--text-secondary);">
+                            <strong>Note:</strong> Analysis typically takes 1-3 minutes depending on your app size
+                        </p>
+                        <button onclick="startCrawl()" id="crawlBtn" class="btn-primary inline-flex items-center space-x-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <span>Start Analysis</span>
+                        </button>
+                    </div>
 
                     <div id="crawlProgress" class="hidden mt-6">
-                        <div class="flex items-center justify-center space-x-2 text-blue-400 font-medium mb-3">
-                            <div class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                            <span>Analyzing...</span>
+                        <div class="flex items-center justify-center space-x-2 font-medium mb-3" style="color: var(--google-blue);">
+                            <div class="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style="border-color: var(--google-blue);"></div>
+                            <span>Analyzing your application...</span>
                         </div>
-                        <div id="crawlLog" class="chat-container text-left text-sm text-slate-400 max-h-48"></div>
+                        <div id="crawlLog" class="p-4 rounded-lg text-left text-sm max-h-48 overflow-y-auto" style="background: var(--surface-variant); color: var(--text-secondary);"></div>
                     </div>
                 </div>
                 {% endif %}
@@ -183,12 +242,12 @@
                 <!-- Templates Section -->
                 <div class="glass-card p-6 mb-6">
                     <div class="flex items-center space-x-3 mb-4">
-                        <div class="icon-container-sm">
-                            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="stat-icon stat-icon-blue">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </div>
-                        <h3 class="font-semibold text-white">Quick Templates</h3>
+                        <h3 class="font-medium text-lg" style="color: var(--text-primary);">Quick Templates</h3>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button onclick="useTemplate('login')" class="quick-action">
@@ -216,19 +275,19 @@
                 <div class="glass-card p-6">
                     <div class="flex items-center justify-between mb-6">
                         <div class="flex items-center space-x-3">
-                            <div class="icon-container-sm">
-                                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="stat-icon stat-icon-blue">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                                 </svg>
                             </div>
-                            <h3 class="font-semibold text-white">Test Specifications</h3>
+                            <h3 class="font-medium text-lg" style="color: var(--text-primary);">Test Specifications</h3>
                             <span class="badge badge-neutral text-xs" id="specCount">{{ project.test_specs|length }} tests</span>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <button onclick="selectAllSpecs(true)" class="btn-ghost text-xs text-slate-400">
+                            <button onclick="selectAllSpecs(true)" class="btn-ghost text-xs">
                                 Select All
                             </button>
-                            <button onclick="selectAllSpecs(false)" class="btn-ghost text-xs text-slate-400">
+                            <button onclick="selectAllSpecs(false)" class="btn-ghost text-xs">
                                 Deselect All
                             </button>
                             <div class="w-px h-4 bg-white/20"></div>
@@ -243,23 +302,23 @@
 
                     <div id="specsList" class="space-y-3">
                         {% for spec in project.test_specs %}
-                        <div class="glass-subtle p-4 rounded-lg spec-item" data-spec-id="{{ spec.id }}">
+                        <div class="glass-card p-4 rounded-lg spec-item" data-spec-id="{{ spec.id }}">
                             <div class="flex items-start justify-between">
-                                <div class="flex items-start space-x-4">
-                                    <input type="checkbox" checked class="spec-checkbox checkbox-glass mt-1" data-id="{{ spec.id }}">
+                                <div class="flex items-start space-x-4 flex-1">
+                                    <input type="checkbox" checked class="spec-checkbox checkbox-glass mt-1.5" data-id="{{ spec.id }}">
                                     <div class="flex-1">
-                                        <div class="flex items-center space-x-2 mb-1">
-                                            <span class="font-medium text-white">{{ spec.name }}</span>
-                                            <span class="badge badge-neutral text-xs">{{ spec.category }}</span>
+                                        <div class="flex items-center flex-wrap gap-2 mb-2">
+                                            <span class="font-medium text-base" style="color: var(--text-primary);">{{ spec.name }}</span>
+                                            <span class="badge badge-info text-xs">{{ spec.category }}</span>
                                             <span class="badge {% if spec.priority == 'high' %}badge-error{% elif spec.priority == 'medium' %}badge-warning{% else %}badge-neutral{% endif %} text-xs">
                                                 {{ spec.priority }}
                                             </span>
                                         </div>
-                                        <p class="text-slate-400 text-sm mb-2">{{ spec.description }}</p>
+                                        <p class="text-sm mb-2" style="color: var(--text-secondary);">{{ spec.description }}</p>
                                         {% if spec.acceptance_criteria %}
                                         <div class="flex flex-wrap gap-1">
                                             {% for criteria in spec.acceptance_criteria %}
-                                            <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                            <span class="text-xs px-2 py-0.5 rounded badge badge-info">
                                                 {{ criteria.type }}: {{ criteria.value[:20] }}{% if criteria.value|length > 20 %}...{% endif %}
                                             </span>
                                             {% endfor %}
@@ -267,18 +326,18 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <div class="flex items-center space-x-2">
-                                    <button onclick="editSpec('{{ spec.id }}')" class="text-slate-500 hover:text-white transition p-1" title="Edit">
+                                <div class="flex items-center space-x-1 flex-shrink-0">
+                                    <button onclick="editSpec('{{ spec.id }}')" class="p-2 rounded hover:bg-opacity-10 transition" style="color: var(--text-secondary);" onmouseover="this.style.color='var(--google-blue)'; this.style.background='var(--surface-variant)';" onmouseout="this.style.color='var(--text-secondary)'; this.style.background='transparent';" title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                     </button>
-                                    <button onclick="duplicateSpec('{{ spec.id }}')" class="text-slate-500 hover:text-white transition p-1" title="Duplicate">
+                                    <button onclick="duplicateSpec('{{ spec.id }}')" class="p-2 rounded hover:bg-opacity-10 transition" style="color: var(--text-secondary);" onmouseover="this.style.color='var(--google-blue)'; this.style.background='var(--surface-variant)';" onmouseout="this.style.color='var(--text-secondary)'; this.style.background='transparent';" title="Duplicate">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                         </svg>
                                     </button>
-                                    <button onclick="deleteSpec('{{ spec.id }}')" class="text-slate-500 hover:text-red-400 transition p-1" title="Delete">
+                                    <button onclick="deleteSpec('{{ spec.id }}')" class="p-2 rounded hover:bg-opacity-10 transition" style="color: var(--text-secondary);" onmouseover="this.style.color='var(--error)'; this.style.background='var(--surface-variant)';" onmouseout="this.style.color='var(--text-secondary)'; this.style.background='transparent';" title="Delete">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
@@ -290,7 +349,7 @@
                     </div>
 
                     {% if not project.test_specs %}
-                    <div id="emptySpecs" class="text-center py-10 text-slate-400">
+                    <div id="emptySpecs" class="text-center py-10" style="color: var(--text-secondary);">
                         <p>No test specs yet. Analyze your app first or add tests manually.</p>
                     </div>
                     {% endif %}
@@ -1497,6 +1556,38 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Theme management
+        const html = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('lightIcon');
+        const darkIcon = document.getElementById('darkIcon');
+
+        // Get saved theme or default to light
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        updateThemeIcons(savedTheme);
+
+        function updateThemeIcons(theme) {
+            if (theme === 'dark') {
+                darkIcon.classList.remove('hidden');
+                lightIcon.classList.add('hidden');
+            } else {
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
+            }
+        }
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+                html.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcons(newTheme);
+            });
         }
     </script>
 </body>
