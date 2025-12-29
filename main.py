@@ -910,7 +910,7 @@ def handle_test(data):
                 result = await agent.run_command(command)
 
                 # Run compliance scans after test
-                socketio.emit('test_progress', {'message': '🔍 Running compliance scans...'})
+                socketio.emit('test_progress', {'message': '[Query] Running compliance scans...'})
 
                 # Get current response for security headers
                 response = await agent.page.goto(agent.page.url, wait_until='domcontentloaded')
@@ -1006,7 +1006,7 @@ def handle_run_spec(data):
                     socketio.emit('spec_complete', {'spec': spec, 'result': result})
 
                 # Run compliance scans after all tests
-                socketio.emit('test_progress', {'message': '🔍 Running compliance scans...'})
+                socketio.emit('test_progress', {'message': '[Query] Running compliance scans...'})
 
                 # Get current response for security headers
                 response = await agent.page.goto(agent.page.url, wait_until='domcontentloaded')

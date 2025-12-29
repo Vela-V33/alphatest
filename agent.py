@@ -79,7 +79,7 @@ class AlphaTestAgent:
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
         browser_name = self.browser_type.capitalize()
-        self.status(f"🚀 Starting {browser_name} browser...")
+        self.status(f"[Starting] Starting {browser_name} browser...")
         self.playwright = await async_playwright().start()
 
         # Get browser launcher based on type
@@ -174,7 +174,7 @@ class AlphaTestAgent:
         self.page.on("pageerror", lambda err: self._handle_page_error(err))
         self.page.on("requestfailed", lambda req: self._handle_network_error(req))
 
-        self.status("✓ Browser ready!")
+        self.status("[OK] Browser ready!")
 
     async def close(self):
         """Close browser and save video."""
@@ -184,9 +184,9 @@ class AlphaTestAgent:
             if self.page and self.page.video:
                 video_path = await self.page.video.path()
                 if video_path:
-                    self.status(f"📹 Video saved: {Path(video_path).name}")
+                    self.status(f"[Video] Video saved: {Path(video_path).name}")
         except Exception as e:
-            self.status(f"⚠️ Could not save video: {e}")
+            self.status(f"[WARNING] Could not save video: {e}")
 
         if self.browser:
             await self.browser.close()
@@ -206,7 +206,7 @@ class AlphaTestAgent:
         if msg.type in ['error', 'warning']:
             self.console_errors.append(log_entry)
             if msg.type == 'error':
-                self.status(f"   ⚠️ Console Error: {msg.text}")
+                self.status(f"   [WARNING] Console Error: {msg.text}")
 
     def _handle_page_error(self, error):
         """Capture page errors."""
@@ -226,7 +226,7 @@ class AlphaTestAgent:
             'timestamp': datetime.now().isoformat()
         }
         self.network_errors.append(error_entry)
-        self.status(f"   🌐 Network Error: {request.method} {request.url}")
+        self.status(f"   [Network] Network Error: {request.method} {request.url}")
 
     async def capture_performance_metrics(self) -> Dict:
         """Capture current page performance metrics."""
@@ -290,7 +290,7 @@ class AlphaTestAgent:
             }''')
 
             if 'error' in results:
-                self.status(f"   ⚠️ Accessibility scan error: {results['error']}")
+                self.status(f"   [WARNING] Accessibility scan error: {results['error']}")
                 return {'violations': [], 'error': results['error']}
 
             violations = results.get('violations', [])
@@ -341,12 +341,12 @@ class AlphaTestAgent:
             if critical_count > 0:
                 self.status(f"   ♿ Accessibility: {critical_count} critical, {serious_count} serious violations")
             else:
-                self.status(f"   ✓ Accessibility: WCAG {wcag_level}")
+                self.status(f"   [OK] Accessibility: WCAG {wcag_level}")
 
             return result
 
         except Exception as e:
-            self.status(f"   ⚠️ Accessibility scan failed: {e}")
+            self.status(f"   [WARNING] Accessibility scan failed: {e}")
             return {'violations': [], 'error': str(e)}
 
     async def check_security_headers(self, response = None) -> Dict:
@@ -457,12 +457,12 @@ class AlphaTestAgent:
             if len(missing_headers) > 0:
                 self.status(f"   🔒 Security: {len(missing_headers)} missing headers ({result['compliance_percentage']:.0f}% compliant)")
             else:
-                self.status(f"   ✓ Security: All headers present (100% compliant)")
+                self.status(f"   [OK] Security: All headers present (100% compliant)")
 
             return result
 
         except Exception as e:
-            self.status(f"   ⚠️ Security headers check failed: {e}")
+            self.status(f"   [WARNING] Security headers check failed: {e}")
             return {'error': str(e)}
 
     async def run_lighthouse_audit(self) -> Dict:
@@ -662,12 +662,12 @@ class AlphaTestAgent:
             self.status(f"   ⚡ Performance: {grade} ({perf_score*100:.0f}/100)")
 
             if cwv_issues:
-                self.status(f"   ⚠️ Core Web Vitals: {len(cwv_issues)} metrics exceed thresholds")
+                self.status(f"   [WARNING] Core Web Vitals: {len(cwv_issues)} metrics exceed thresholds")
 
             return metrics
 
         except Exception as e:
-            self.status(f"   ⚠️ Lighthouse audit failed: {e}")
+            self.status(f"   [WARNING] Lighthouse audit failed: {e}")
             return {'error': str(e)}
 
     def generate_fake_data(self, field_type: str, field_name: str = "") -> str:
@@ -829,7 +829,7 @@ class AlphaTestAgent:
                 # Track visual regressions
                 if not result.get('matched', True):
                     self.visual_regressions.append(result)
-                    self.status(f"   ⚠️ Visual regression detected: {name} ({result['diff_percentage']:.2f}% different)")
+                    self.status(f"   [WARNING] Visual regression detected: {name} ({result['diff_percentage']:.2f}% different)")
 
                     # Add as issue
                     self.issues.append({
@@ -841,12 +841,12 @@ class AlphaTestAgent:
                         'timestamp': datetime.now().isoformat()
                     })
                 else:
-                    self.status(f"   ✓ Visual check passed: {name} ({result['diff_percentage']:.2f}% different)")
+                    self.status(f"   [OK] Visual check passed: {name} ({result['diff_percentage']:.2f}% different)")
 
             return result
 
         except Exception as e:
-            self.status(f"   ⚠️ Visual regression check failed: {e}")
+            self.status(f"   [WARNING] Visual regression check failed: {e}")
             return {'error': str(e)}
 
     async def run_assertion(self, assertion_type: str, **kwargs) -> AssertionResult:
@@ -878,7 +878,7 @@ class AlphaTestAgent:
             self.assertion_results.append(result.to_dict())
 
             # Log result
-            status_icon = "✓" if result.passed else "✗"
+            status_icon = "✓" if result.passed else "[FAIL]"
             self.status(f"   {status_icon} Assertion: {result.message}")
 
             # Create issue if failed
@@ -895,7 +895,7 @@ class AlphaTestAgent:
             return result
 
         except Exception as e:
-            self.status(f"   ⚠️ Assertion error: {e}")
+            self.status(f"   [WARNING] Assertion error: {e}")
             return AssertionResult(False, f"Assertion error: {e}")
 
     async def apply_test_pattern(self, pattern_name: str, **kwargs) -> Dict:
@@ -916,7 +916,7 @@ class AlphaTestAgent:
                 return {'error': f"Unknown pattern: {pattern_name}"}
 
             pattern = pattern_method(**kwargs)
-            self.status(f"   📋 Applying pattern: {pattern_name}")
+            self.status(f"   [Pattern] Applying pattern: {pattern_name}")
 
             results = {
                 'pattern': pattern_name,
@@ -944,7 +944,7 @@ class AlphaTestAgent:
             return results
 
         except Exception as e:
-            self.status(f"   ⚠️ Pattern error: {e}")
+            self.status(f"   [WARNING] Pattern error: {e}")
             return {'error': str(e)}
 
     async def use_fixture(self, name: str) -> Optional[Any]:
@@ -959,19 +959,19 @@ class AlphaTestAgent:
         """
         try:
             if not self.test_data_manager:
-                self.status(f"   ⚠️ Test data manager not initialized")
+                self.status(f"   [WARNING] Test data manager not initialized")
                 return None
 
             fixture = self.test_data_manager.get_fixture(name)
             if fixture:
-                self.status(f"   📦 Loaded fixture: {name}")
+                self.status(f"   [Loaded] Loaded fixture: {name}")
             else:
-                self.status(f"   ⚠️ Fixture not found: {name}")
+                self.status(f"   [WARNING] Fixture not found: {name}")
 
             return fixture
 
         except Exception as e:
-            self.status(f"   ⚠️ Error loading fixture: {e}")
+            self.status(f"   [WARNING] Error loading fixture: {e}")
             return None
 
     async def generate_test_data(self, entity_type: str, **kwargs) -> Optional[Dict]:
@@ -987,7 +987,7 @@ class AlphaTestAgent:
         """
         try:
             if not self.test_data_manager:
-                self.status(f"   ⚠️ Test data manager not initialized")
+                self.status(f"   [WARNING] Test data manager not initialized")
                 return None
 
             generators = {
@@ -1000,16 +1000,16 @@ class AlphaTestAgent:
 
             generator = generators.get(entity_type)
             if not generator:
-                self.status(f"   ⚠️ Unknown entity type: {entity_type}")
+                self.status(f"   [WARNING] Unknown entity type: {entity_type}")
                 return None
 
             data = generator(**kwargs) if kwargs else generator()
-            self.status(f"   🎲 Generated {entity_type} data")
+            self.status(f"   [Generated] Generated {entity_type} data")
 
             return data
 
         except Exception as e:
-            self.status(f"   ⚠️ Error generating test data: {e}")
+            self.status(f"   [WARNING] Error generating test data: {e}")
             return None
 
     async def api_request(
@@ -1031,13 +1031,13 @@ class AlphaTestAgent:
         """
         try:
             if not self.api_tester:
-                self.status(f"   ⚠️ API tester not initialized")
+                self.status(f"   [WARNING] API tester not initialized")
                 return None
 
             # Pass the page object to the request
             kwargs['page'] = self.page
 
-            self.status(f"   🌐 {method.upper()} {endpoint}")
+            self.status(f"   [Network] {method.upper()} {endpoint}")
             response = await self.api_tester.request(method, endpoint, **kwargs)
 
             # Track response
@@ -1050,7 +1050,7 @@ class AlphaTestAgent:
             return response
 
         except Exception as e:
-            self.status(f"   ⚠️ API request error: {e}")
+            self.status(f"   [WARNING] API request error: {e}")
             return None
 
     async def api_get(self, endpoint: str, **kwargs) -> Optional[APIResponse]:
@@ -1094,11 +1094,11 @@ class AlphaTestAgent:
         """
         try:
             if not self.api_tester:
-                self.status(f"   ⚠️ API tester not initialized")
+                self.status(f"   [WARNING] API tester not initialized")
                 return None
 
             kwargs['page'] = self.page
-            self.status(f"   🔍 GraphQL Query")
+            self.status(f"   [Query] GraphQL Query")
 
             response = await self.api_tester.graphql(query, variables, endpoint, **kwargs)
 
@@ -1112,7 +1112,7 @@ class AlphaTestAgent:
             return response
 
         except Exception as e:
-            self.status(f"   ⚠️ GraphQL query error: {e}")
+            self.status(f"   [WARNING] GraphQL query error: {e}")
             return None
 
     async def api_assert(
@@ -1150,13 +1150,13 @@ class AlphaTestAgent:
 
             assertion_method = assertion_methods.get(assertion_type)
             if not assertion_method:
-                self.status(f"   ⚠️ Unknown assertion type: {assertion_type}")
+                self.status(f"   [WARNING] Unknown assertion type: {assertion_type}")
                 return None
 
             assertion = assertion_method()
 
             # Log assertion
-            status_icon = "✓" if assertion.passed else "✗"
+            status_icon = "✓" if assertion.passed else "[FAIL]"
             self.status(f"   {status_icon} {assertion.message}")
 
             # Create issue if failed
@@ -1173,7 +1173,7 @@ class AlphaTestAgent:
             return assertion
 
         except Exception as e:
-            self.status(f"   ⚠️ API assertion error: {e}")
+            self.status(f"   [WARNING] API assertion error: {e}")
             return None
 
     async def wait_for_stable(self, timeout: int = 5000):
@@ -1230,7 +1230,7 @@ class AlphaTestAgent:
             ''')
 
             if not has_content:
-                self.status("   ⚠️ Page appears to be blank or loading")
+                self.status("   [WARNING] Page appears to be blank or loading")
                 # Quick wait if page seems empty (reduced from 3s to 0.5s)
                 await asyncio.sleep(0.5)
         except:
@@ -1288,7 +1288,7 @@ class AlphaTestAgent:
                 self.status(f"   📸 Screenshot: {name} ({file_size} bytes)")
 
                 if file_size < 1000:
-                    self.status(f"   ⚠️ Screenshot file is very small, may be blank")
+                    self.status(f"   [WARNING] Screenshot file is very small, may be blank")
 
                 screenshot_data = {
                     'step': self.step_count,
@@ -1305,10 +1305,10 @@ class AlphaTestAgent:
                 print(f"[DEBUG] Screenshot saved: {filename} at {filepath}")
                 return str(filepath)
             else:
-                self.status(f"   ⚠️ Screenshot file not created")
+                self.status(f"   [WARNING] Screenshot file not created")
 
         except Exception as e:
-            self.status(f"   ⚠️ Screenshot failed: {e}")
+            self.status(f"   [WARNING] Screenshot failed: {e}")
 
         return ""
 
@@ -1356,11 +1356,11 @@ Criteria:"""
                     # Handle lines without bullet points
                     criteria.append(line)
 
-            self.status(f"   ✓ Generated {len(criteria)} acceptance criteria")
+            self.status(f"   [OK] Generated {len(criteria)} acceptance criteria")
             return criteria[:5]  # Limit to 5 criteria
 
         except Exception as e:
-            self.status(f"   ⚠️ Failed to generate criteria: {e}")
+            self.status(f"   [WARNING] Failed to generate criteria: {e}")
             # Return default criteria
             return [
                 "Test completes without errors",
@@ -1397,13 +1397,13 @@ Criteria:"""
                     if elem:
                         await elem.fill(email)
                         email_filled = True
-                        self.status(f"   ✓ Email entered using: {sel}")
+                        self.status(f"   [OK] Email entered using: {sel}")
                         break
                 except:
                     continue
             
             if not email_filled:
-                self.status("   ⚠️ Could not find email field")
+                self.status("   [WARNING] Could not find email field")
                 return False
             
             # Try multiple password selectors
@@ -1422,13 +1422,13 @@ Criteria:"""
                     if elem:
                         await elem.fill(password)
                         password_filled = True
-                        self.status(f"   ✓ Password entered using: {sel}")
+                        self.status(f"   [OK] Password entered using: {sel}")
                         break
                 except:
                     continue
             
             if not password_filled:
-                self.status("   ⚠️ Could not find password field")
+                self.status("   [WARNING] Could not find password field")
                 return False
             
             await self.screenshot("02_credentials_entered")
@@ -1451,7 +1451,7 @@ Criteria:"""
                     elem = await self.page.wait_for_selector(sel, timeout=2000, state='visible')
                     if elem:
                         await elem.click()
-                        self.status(f"   ✓ Clicked submit: {sel}")
+                        self.status(f"   [OK] Clicked submit: {sel}")
                         break
                 except:
                     continue
@@ -1464,10 +1464,10 @@ Criteria:"""
             # Check if login succeeded
             current_url = self.page.url.lower()
             if 'login' not in current_url and 'signin' not in current_url:
-                self.status("✓ Login successful!")
+                self.status("[OK] Login successful!")
                 return True
             
-            self.status("⚠️ May still be on login page")
+            self.status("[WARNING] May still be on login page")
             return False
             
         except Exception as e:
@@ -2038,7 +2038,7 @@ Return ONLY valid JSON:
             for i, step in enumerate(self.steps[-5:]):  # Last 5 steps
                 action = step.get('action', {})
                 result = step.get('result', {})
-                status = "✓" if result.get('success') else "✗"
+                status = "✓" if result.get('success') else "[FAIL]"
                 recent_actions += f"{i+1}. {status} {action.get('type', 'unknown')} on {action.get('selector', 'N/A')} - {result.get('message', 'N/A')}\n"
 
         user_message = f"""TASK: {task}
@@ -2109,7 +2109,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             return result
             
         except Exception as e:
-            self.status(f"   ⚠️ AI error: {e}")
+            self.status(f"   [WARNING] AI error: {e}")
             return {
                 "thinking": f"Error: {str(e)}",
                 "action": {"type": "wait", "duration": 2000},
@@ -2275,7 +2275,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
                     step_data['criteria_result'] = criteria_result
                     if not criteria_result['passed']:
                         result['status'] = 'failed'
-                        self.status("⚠️ Some acceptance criteria not met")
+                        self.status("[WARNING] Some acceptance criteria not met")
                 
                 step_data['result'] = {'success': True, 'message': 'Task completed'}
                 result['steps'].append(step_data)
@@ -2290,7 +2290,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
                 if action_signature in self.completed_actions:
                     # Allow retry if it's been more than 3 steps since this action
                     if len(result['steps']) - self.completed_actions.count(action_signature) < 3:
-                        self.status(f"   ⚠️  This exact action already succeeded, trying anyway...")
+                        self.status(f"   [WARNING]  This exact action already succeeded, trying anyway...")
 
                 # Screenshot before action
                 before_shot = await self.screenshot(
@@ -2307,10 +2307,10 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
                 # Failed actions can be retried with different approaches
                 if action_result['success']:
                     self.completed_actions.append(action_signature)
-                    self.status(f"   ✓ {action_result['message']}")
+                    self.status(f"   [OK] {action_result['message']}")
                     consecutive_failures = 0  # Reset on success
                 else:
-                    self.status(f"   ✗ {action_result['message']}")
+                    self.status(f"   [FAIL] {action_result['message']}")
                     consecutive_failures += 1  # Increment on failure
 
                     # Log failed action as an issue for reporting
