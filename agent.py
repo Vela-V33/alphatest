@@ -24,6 +24,9 @@ from assertions import Assertions, TestPatterns, AssertionResult
 from test_data import TestDataManager
 from api_testing import APITester, APIResponse, APIAssertion
 from smart_element_finder import SmartElementFinder
+from navigation_tracker import NavigationTracker
+from performance_tracker import PerformanceTracker
+from form_intelligence import FormIntelligence
 
 
 class AlphaTestAgent:
@@ -79,6 +82,11 @@ class AlphaTestAgent:
 
         # Smart element finding
         self.smart_finder = None
+
+        # Phase 2: Navigation and performance tracking
+        self.nav_tracker = NavigationTracker()
+        self.perf_tracker = PerformanceTracker()
+        self.form_intel = None
 
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
@@ -175,6 +183,10 @@ class AlphaTestAgent:
 
         # Initialize smart element finder
         self.smart_finder = SmartElementFinder(self.page, self.status)
+
+        # Initialize Phase 2 modules with page
+        self.perf_tracker.page = self.page
+        self.form_intel = FormIntelligence(self.page, self.status)
 
         # Setup console and error listeners
         self.page.on("console", lambda msg: self._handle_console(msg))
@@ -1286,6 +1298,9 @@ class AlphaTestAgent:
         """
         self.status(f"   [Navigation] Navigating to: {url}")
 
+        # Start performance timer
+        self.perf_tracker.start_timer('page_load')
+
         try:
             # Navigate
             await self.page.goto(url, wait_until=wait_until, timeout=timeout)
@@ -1294,13 +1309,33 @@ class AlphaTestAgent:
             if self.smart_finder:
                 await self.smart_finder.wait_for_navigation(timeout=timeout, wait_until=wait_until)
 
-            self.status("   [Navigation] Navigation completed")
+            # Stop performance timer
+            perf_metric = self.perf_tracker.stop_timer('page_load')
+
+            # Get page title
+            title = await self.page.title()
+
+            # Add to navigation breadcrumbs
+            self.nav_tracker.add_breadcrumb(
+                url=url,
+                title=title,
+                action='navigate',
+                success=True,
+                duration_ms=perf_metric.value if perf_metric else 0
+            )
+
+            # Collect Web Vitals
+            await self.perf_tracker.collect_web_vitals()
+
+            self.status(f"   [Navigation] Navigation completed ({perf_metric.value if perf_metric else 0:.0f}ms)")
 
             # Record in steps
             self.steps.append({
                 'action': 'navigate',
                 'url': url,
+                'title': title,
                 'success': True,
+                'duration_ms': perf_metric.value if perf_metric else 0,
                 'timestamp': datetime.now().isoformat()
             })
 
@@ -1308,6 +1343,16 @@ class AlphaTestAgent:
 
         except Exception as e:
             self.status(f"   [WARNING] Navigation failed: {str(e)[:100]}")
+
+            # Stop timer on failure
+            self.perf_tracker.stop_timer('page_load')
+
+            # Add failed breadcrumb
+            self.nav_tracker.add_breadcrumb(
+                url=url,
+                action='navigate',
+                success=False
+            )
 
             # Record failure
             self.steps.append({
@@ -1319,6 +1364,60 @@ class AlphaTestAgent:
             })
 
             return False
+
+    async def detect_and_fill_form(
+        self,
+        form_index: int = 0,
+        field_values: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        """
+        Auto-detect and fill a form intelligently.
+
+        Args:
+            form_index: Index of the form to fill
+            field_values: Dict mapping field purposes to values
+
+        Returns:
+            Dict with fill results
+        """
+        if not self.form_intel:
+            self.status("[WARNING] Form intelligence not initialized")
+            return {'success': False, 'error': 'Form intelligence not initialized'}
+
+        self.status(f"   [Form] Auto-detecting form {form_index}...")
+
+        # Start timer
+        self.perf_tracker.start_timer('form_fill')
+
+        result = await self.form_intel.auto_fill_form(form_index, field_values)
+
+        # Stop timer
+        perf_metric = self.perf_tracker.stop_timer('form_fill')
+
+        if result['success']:
+            self.status(f"   [Form] Filled {result['total_filled']} fields ({perf_metric.value if perf_metric else 0:.0f}ms)")
+
+        return result
+
+    async def detect_forms(self) -> List[Dict]:
+        """Detect all forms on the current page."""
+        if not self.form_intel:
+            self.status("[WARNING] Form intelligence not initialized")
+            return []
+
+        return await self.form_intel.detect_forms()
+
+    def get_navigation_breadcrumbs(self, max_items: int = 10) -> List[Dict]:
+        """Get navigation breadcrumb trail."""
+        return self.nav_tracker.get_breadcrumb_trail(max_items)
+
+    def get_performance_summary(self) -> Dict:
+        """Get performance metrics summary."""
+        return self.perf_tracker.get_metrics_summary()
+
+    def get_navigation_summary(self) -> Dict:
+        """Get navigation session summary."""
+        return self.nav_tracker.get_session_summary()
 
     async def wait_for_stable(self, timeout: int = 5000):
         """Wait for page to be stable (no loading, animations complete)."""
@@ -2519,6 +2618,11 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             'available_fixtures': available_fixtures,
             'api_responses': self.api_responses,
             'api_assertions': api_assertions,
+            # Phase 2: Navigation and Performance tracking
+            'navigation_breadcrumbs': self.nav_tracker.get_breadcrumb_trail(),
+            'navigation_summary': self.nav_tracker.get_session_summary(),
+            'performance_summary': self.perf_tracker.get_metrics_summary(),
+            'performance_details': self.perf_tracker.get_all_metrics(),
             'generated_at': datetime.now().isoformat()
         }
 
