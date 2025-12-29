@@ -23,6 +23,7 @@ from visual_regression import VisualRegressionTester
 from assertions import Assertions, TestPatterns, AssertionResult
 from test_data import TestDataManager
 from api_testing import APITester, APIResponse, APIAssertion
+from smart_element_finder import SmartElementFinder
 
 
 class AlphaTestAgent:
@@ -75,6 +76,9 @@ class AlphaTestAgent:
         # API testing
         self.api_tester = None
         self.api_responses = []
+
+        # Smart element finding
+        self.smart_finder = None
 
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
@@ -168,6 +172,9 @@ class AlphaTestAgent:
             base_url="",  # Will be set dynamically based on test URL
             default_headers={"User-Agent": "AlphaTest/2.0"}
         )
+
+        # Initialize smart element finder
+        self.smart_finder = SmartElementFinder(self.page, self.status)
 
         # Setup console and error listeners
         self.page.on("console", lambda msg: self._handle_console(msg))
@@ -1175,6 +1182,143 @@ class AlphaTestAgent:
         except Exception as e:
             self.status(f"   [WARNING] API assertion error: {e}")
             return None
+
+    async def smart_click(
+        self,
+        target: str,
+        verify_effect: List[str] = None,
+        max_retries: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Smart click with multiple finding strategies and retry logic.
+
+        Args:
+            target: Description of what to click
+            verify_effect: List of expected effects to verify
+            max_retries: Number of retry attempts
+
+        Returns:
+            Dict with success status and details
+        """
+        if not self.smart_finder:
+            self.status("[WARNING] Smart finder not initialized")
+            return {'success': False, 'error': 'Smart finder not initialized'}
+
+        # Use smart finder to find and click
+        result = await self.smart_finder.find_and_click(
+            target,
+            max_retries=max_retries,
+            scroll_into_view=True,
+            dismiss_overlays=True
+        )
+
+        # Verify click effect if specified
+        if result['success'] and verify_effect:
+            verification = await self.smart_finder.verify_click_effect(verify_effect)
+            result['verification'] = verification
+
+        # Record in steps
+        self.steps.append({
+            'action': 'smart_click',
+            'target': target,
+            'success': result['success'],
+            'method': result.get('method', 'unknown'),
+            'attempts': result.get('attempts', 0),
+            'timestamp': datetime.now().isoformat()
+        })
+
+        return result
+
+    async def smart_fill(
+        self,
+        field_description: str,
+        value: str,
+        clear_first: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Smart form filling with multiple finding strategies.
+
+        Args:
+            field_description: Description of the field
+            value: Value to fill
+            clear_first: Clear field before filling
+
+        Returns:
+            Dict with success status and details
+        """
+        if not self.smart_finder:
+            self.status("[WARNING] Smart finder not initialized")
+            return {'success': False, 'error': 'Smart finder not initialized'}
+
+        result = await self.smart_finder.smart_fill(
+            field_description,
+            value,
+            clear_first=clear_first
+        )
+
+        # Record in steps
+        self.steps.append({
+            'action': 'smart_fill',
+            'field': field_description,
+            'success': result['success'],
+            'method': result.get('method', 'unknown'),
+            'timestamp': datetime.now().isoformat()
+        })
+
+        return result
+
+    async def smart_navigate(
+        self,
+        url: str,
+        wait_until: str = 'networkidle',
+        timeout: int = 30000
+    ) -> bool:
+        """
+        Smart navigation with intelligent waiting.
+
+        Args:
+            url: URL to navigate to
+            wait_until: Load state to wait for
+            timeout: Maximum wait time
+
+        Returns:
+            True if navigation successful
+        """
+        self.status(f"   [Navigation] Navigating to: {url}")
+
+        try:
+            # Navigate
+            await self.page.goto(url, wait_until=wait_until, timeout=timeout)
+
+            # Use smart finder's navigation wait
+            if self.smart_finder:
+                await self.smart_finder.wait_for_navigation(timeout=timeout, wait_until=wait_until)
+
+            self.status("   [Navigation] Navigation completed")
+
+            # Record in steps
+            self.steps.append({
+                'action': 'navigate',
+                'url': url,
+                'success': True,
+                'timestamp': datetime.now().isoformat()
+            })
+
+            return True
+
+        except Exception as e:
+            self.status(f"   [WARNING] Navigation failed: {str(e)[:100]}")
+
+            # Record failure
+            self.steps.append({
+                'action': 'navigate',
+                'url': url,
+                'success': False,
+                'error': str(e)[:100],
+                'timestamp': datetime.now().isoformat()
+            })
+
+            return False
 
     async def wait_for_stable(self, timeout: int = 5000):
         """Wait for page to be stable (no loading, animations complete)."""
