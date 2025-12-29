@@ -33,9 +33,9 @@
     --surface-container-high: #e8eaed;
 
     /* Borders */
-    --border-color: #dadce0;
-    --border-subtle: #e8eaed;
-    --divider: #e8eaed;
+    --border-color: #c4c7c9;
+    --border-subtle: #d0d3d6;
+    --divider: #d0d3d6;
 
     /* Text */
     --text-primary: #202124;
@@ -94,8 +94,8 @@
 
     /* Borders */
     --border-color: #5f6368;
-    --border-subtle: #3c4043;
-    --divider: #3c4043;
+    --border-subtle: #4a4d50;
+    --divider: #4a4d50;
 
     /* Text */
     --text-primary: #e8eaed;
