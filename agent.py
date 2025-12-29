@@ -27,6 +27,9 @@ from smart_element_finder import SmartElementFinder
 from navigation_tracker import NavigationTracker
 from performance_tracker import PerformanceTracker
 from form_intelligence import FormIntelligence
+from agent_memory import AgentMemory
+from network_monitor import NetworkMonitor
+from session_recovery import SessionRecovery, CheckpointType, ErrorRecovery
 
 
 class AlphaTestAgent:
@@ -87,6 +90,12 @@ class AlphaTestAgent:
         self.nav_tracker = NavigationTracker()
         self.perf_tracker = PerformanceTracker()
         self.form_intel = None
+
+        # Phase 3: Memory, monitoring, and recovery
+        self.memory = AgentMemory()
+        self.network_monitor = NetworkMonitor()
+        self.session_recovery = SessionRecovery()
+        self.error_recovery = ErrorRecovery()
 
     async def initialize(self, session_dir: Path = None):
         """Start browser and prepare session."""
@@ -188,6 +197,10 @@ class AlphaTestAgent:
         self.perf_tracker.page = self.page
         self.form_intel = FormIntelligence(self.page, self.status)
 
+        # Initialize Phase 3 modules with page
+        self.network_monitor.start_monitoring(self.page)
+        self.session_recovery.session_dir = self.session_dir
+
         # Setup console and error listeners
         self.page.on("console", lambda msg: self._handle_console(msg))
         self.page.on("pageerror", lambda err: self._handle_page_error(err))
@@ -206,6 +219,22 @@ class AlphaTestAgent:
                     self.status(f"[Video] Video saved: {Path(video_path).name}")
         except Exception as e:
             self.status(f"[WARNING] Could not save video: {e}")
+
+        # Save Phase 3 data
+        try:
+            # Save agent memory
+            self.memory.save()
+
+            # Stop network monitoring
+            self.network_monitor.stop_monitoring()
+
+            # Export session checkpoints if session_dir exists
+            if self.session_dir:
+                checkpoint_file = self.session_dir / "checkpoints.json"
+                self.session_recovery.export_checkpoints(checkpoint_file)
+
+        except Exception as e:
+            self.status(f"[WARNING] Could not save session data: {e}")
 
         if self.browser:
             await self.browser.close()
@@ -1216,12 +1245,36 @@ class AlphaTestAgent:
             self.status("[WARNING] Smart finder not initialized")
             return {'success': False, 'error': 'Smart finder not initialized'}
 
+        # Check memory for suggested strategy (Phase 3)
+        current_url = self.page.url if self.page else None
+
         # Use smart finder to find and click
         result = await self.smart_finder.find_and_click(
             target,
             max_retries=max_retries,
             scroll_into_view=True,
             dismiss_overlays=True
+        )
+
+        # Record success in memory (Phase 3)
+        if result['success'] and current_url:
+            self.memory.record_success(
+                url=current_url,
+                action='click',
+                target=target,
+                selector=result.get('method', ''),
+                strategy=result.get('method', '')
+            )
+
+        # Create checkpoint (Phase 3)
+        self.session_recovery.create_checkpoint(
+            CheckpointType.ACTION,
+            {
+                'action': 'click',
+                'target': target,
+                'success': result['success'],
+                'url': current_url
+            }
         )
 
         # Verify click effect if specified
@@ -2623,6 +2676,12 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
             'navigation_summary': self.nav_tracker.get_session_summary(),
             'performance_summary': self.perf_tracker.get_metrics_summary(),
             'performance_details': self.perf_tracker.get_all_metrics(),
+            # Phase 3: Memory, Network, and Recovery
+            'memory_stats': self.memory.get_memory_stats(),
+            'network_statistics': self.network_monitor.get_statistics(),
+            'api_summary': self.network_monitor.get_api_summary(),
+            'slow_api_calls': self.network_monitor.get_slow_api_calls(),
+            'checkpoint_summary': self.session_recovery.get_checkpoint_summary(),
             'generated_at': datetime.now().isoformat()
         }
 
