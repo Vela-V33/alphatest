@@ -380,6 +380,87 @@ def project_reports(project_id):
     
     return render_template('reports.html', project=project, reports=reports)
 
+@app.route('/project/<project_id>/screenshots/discover', methods=['POST'])
+@login_required
+def discover_pages(project_id):
+    """Discover pages in the website for screenshot selection."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+    async def discover_async():
+        from playwright.async_api import async_playwright
+
+        pages = []
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(viewport={'width': 1920, 'height': 1080})
+            page = await context.new_page()
+
+            try:
+                # Navigate to base URL
+                await page.goto(project['url'], wait_until='networkidle', timeout=30000)
+
+                # Add homepage
+                title = await page.title()
+                pages.append({
+                    'url': page.url,
+                    'path': '/',
+                    'title': title or 'Homepage'
+                })
+
+                # Find all links
+                links = await page.query_selector_all('a[href]')
+                seen_urls = {page.url}
+
+                for link in links[:50]:  # Limit to 50 links
+                    try:
+                        href = await link.get_attribute('href')
+                        if not href:
+                            continue
+
+                        # Build full URL
+                        if href.startswith('http'):
+                            full_url = href
+                        elif href.startswith('/'):
+                            full_url = project['url'].rstrip('/') + href
+                        else:
+                            continue
+
+                        # Skip if already seen, external, or anchor
+                        if full_url in seen_urls or '#' in href or not full_url.startswith(project['url']):
+                            continue
+
+                        seen_urls.add(full_url)
+
+                        # Get link text
+                        text = await link.inner_text()
+                        path = full_url.replace(project['url'], '') or '/'
+
+                        pages.append({
+                            'url': full_url,
+                            'path': path,
+                            'title': text[:100] if text else path
+                        })
+                    except:
+                        continue
+
+            except Exception as e:
+                print(f"Error discovering pages: {e}")
+            finally:
+                await browser.close()
+
+        return pages
+
+    # Run discovery
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    discovered_pages = loop.run_until_complete(discover_async())
+    loop.close()
+
+    return jsonify({'success': True, 'pages': discovered_pages})
+
 @app.route('/project/<project_id>/screenshots/generate', methods=['POST'])
 @login_required
 def generate_screenshots(project_id):
@@ -394,6 +475,7 @@ def generate_screenshots(project_id):
     devices = data.get('devices', [])
     mode = data.get('mode', 'auto')
     instructions = data.get('instructions', '')
+    selected_pages = data.get('selected_pages', [])
 
     if not devices:
         return jsonify({'success': False, 'error': 'No devices selected'}), 400
@@ -404,7 +486,7 @@ def generate_screenshots(project_id):
     # Start screenshot generation in background thread
     thread = threading.Thread(
         target=run_screenshot_generation,
-        args=(project_id, job_id, project, devices, mode, instructions)
+        args=(project_id, job_id, project, devices, mode, instructions, selected_pages)
     )
     thread.start()
 
@@ -1520,10 +1602,12 @@ def handle_crawl(data):
     thread = threading.Thread(target=run_crawl)
     thread.start()
 
-def run_screenshot_generation(project_id, job_id, project, devices, mode, instructions):
+def run_screenshot_generation(project_id, job_id, project, devices, mode, instructions, selected_pages=None):
     """Background task for screenshot generation."""
     print(f"[SCREENSHOT] Starting job {job_id} for project {project_id}")
     print(f"[SCREENSHOT] Devices: {devices}, Mode: {mode}")
+    if selected_pages:
+        print(f"[SCREENSHOT] Selected pages: {len(selected_pages)}")
 
     async def generate_async():
         from playwright.async_api import async_playwright
@@ -1580,7 +1664,20 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                 # Determine pages to capture
                 pages_to_capture = []
 
-                if mode == 'auto':
+                if mode == 'select' and selected_pages:
+                    # Use selected pages from discovery
+                    socketio.emit('screenshot_progress', {
+                        'progress': 30,
+                        'status': f'Preparing {len(selected_pages)} selected pages...'
+                    }, room=job_id)
+
+                    for sp in selected_pages:
+                        pages_to_capture.append({
+                            'url': sp['url'],
+                            'name': sp['title']
+                        })
+
+                elif mode == 'auto':
                     socketio.emit('screenshot_progress', {
                         'progress': 30,
                         'status': 'Discovering pages...'
@@ -1637,52 +1734,66 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                 print(f"[SCREENSHOT] Found {len(pages_to_capture)} pages to capture")
                 print(f"[SCREENSHOT] Total captures: {total_captures}")
 
+                # Device viewport configurations
+                device_viewports = {
+                    'macbook': {'width': 1920, 'height': 1080},
+                    'iphone': {'width': 390, 'height': 844},  # iPhone 15 Pro dimensions
+                    'android': {'width': 412, 'height': 915},  # Pixel 8 Pro dimensions
+                    'ipad': {'width': 1024, 'height': 1366},  # iPad Pro 12.9"
+                    'desktop': {'width': 1920, 'height': 1080}
+                }
+
                 for page_info in pages_to_capture:
                     try:
-                        print(f"[SCREENSHOT] Navigating to: {page_info['url']}")
-                        await page.goto(page_info['url'], wait_until='networkidle', timeout=30000)
-                        await page.wait_for_timeout(2000)  # Let page settle
-
-                        # Capture raw screenshot
-                        print(f"[SCREENSHOT] Capturing screenshot of {page_info['name']}")
-                        screenshot_bytes = await page.screenshot(full_page=True, type='png')
-                        print(f"[SCREENSHOT] Screenshot captured, size: {len(screenshot_bytes)} bytes")
-
-                        # Send live preview to frontend
-                        import base64
-                        preview_b64 = base64.b64encode(screenshot_bytes).decode('utf-8')
-                        socketio.emit('screenshot_preview', {
-                            'page': page_info['name'],
-                            'url': page_info['url'],
-                            'preview': f'data:image/png;base64,{preview_b64[:1000]}...',  # Send thumbnail
-                        }, room=job_id)
-
-                        # Generate AI description
-                        try:
-                            if api_key:
-                                print(f"[SCREENSHOT] Generating AI description for {page_info['name']}")
-                                ai_desc = generate_ai_description(screenshot_bytes, api_key)
-                                print(f"[SCREENSHOT] AI description: {ai_desc[:100]}...")
-                            else:
-                                ai_desc = "Screenshot captured"
-                                print(f"[SCREENSHOT] No API key, using default description")
-                        except Exception as ai_error:
-                            print(f"[SCREENSHOT] AI description failed: {ai_error}")
-                            ai_desc = "Screenshot captured"
-
-                        # Apply device frames
+                        # Capture for each device type with proper viewport
                         for device_type in devices:
                             current_capture += 1
                             progress = 40 + int((current_capture / total_captures) * 50)
 
-                            print(f"[SCREENSHOT] Applying {device_type} frame to {page_info['name']}")
+                            print(f"[SCREENSHOT] Capturing {page_info['name']} on {device_type}")
                             socketio.emit('screenshot_progress', {
                                 'progress': progress,
                                 'status': f'Capturing {page_info["name"]} on {device_type}...'
                             }, room=job_id)
 
                             try:
-                                # Apply frame
+                                # Set viewport for this device
+                                viewport = device_viewports.get(device_type, {'width': 1920, 'height': 1080})
+                                await page.set_viewport_size(viewport)
+                                print(f"[SCREENSHOT] Set viewport to {viewport}")
+
+                                # Navigate to page
+                                print(f"[SCREENSHOT] Navigating to: {page_info['url']}")
+                                await page.goto(page_info['url'], wait_until='networkidle', timeout=30000)
+                                await page.wait_for_timeout(2000)  # Let page settle
+
+                                # Capture screenshot with proper viewport
+                                print(f"[SCREENSHOT] Capturing screenshot of {page_info['name']} at {viewport}")
+                                screenshot_bytes = await page.screenshot(full_page=True, type='png')
+                                print(f"[SCREENSHOT] Screenshot captured, size: {len(screenshot_bytes)} bytes")
+
+                                # Send live preview (only for first device)
+                                if devices.index(device_type) == 0:
+                                    import base64
+                                    preview_b64 = base64.b64encode(screenshot_bytes).decode('utf-8')
+                                    socketio.emit('screenshot_preview', {
+                                        'page': page_info['name'],
+                                        'url': page_info['url'],
+                                        'device': device_type,
+                                        'preview': f'data:image/png;base64,{preview_b64[:1000]}...',
+                                    }, room=job_id)
+
+                                # Generate AI description (only once per page, not per device)
+                                ai_desc = "Screenshot captured"
+                                if devices.index(device_type) == 0 and api_key:
+                                    try:
+                                        print(f"[SCREENSHOT] Generating AI description for {page_info['name']}")
+                                        ai_desc = generate_ai_description(screenshot_bytes, api_key)
+                                        print(f"[SCREENSHOT] AI description: {ai_desc[:100]}...")
+                                    except Exception as ai_error:
+                                        print(f"[SCREENSHOT] AI description failed: {ai_error}")
+
+                                # Apply device frame
                                 frame_image, spec = generator.apply_device_frame(screenshot_bytes, device_type)
                                 print(f"[SCREENSHOT] Frame applied: {device_type}, size: {frame_image.size}")
 

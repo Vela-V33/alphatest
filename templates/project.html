@@ -443,21 +443,59 @@
                             <label class="block text-sm font-medium mb-3" style="color: var(--text-primary);">
                                 Capture Mode
                             </label>
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-3 gap-3">
                                 <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
                                     <input type="radio" name="captureMode" value="auto" checked class="mr-3" onchange="toggleCaptureMode()">
                                     <div>
                                         <p class="font-medium" style="color: var(--text-primary);">Automatic</p>
-                                        <p class="text-sm" style="color: var(--text-secondary);">AI discovers and captures all pages</p>
+                                        <p class="text-sm" style="color: var(--text-secondary);">Auto-discover all pages</p>
+                                    </div>
+                                </label>
+                                <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
+                                    <input type="radio" name="captureMode" value="select" class="mr-3" onchange="toggleCaptureMode()">
+                                    <div>
+                                        <p class="font-medium" style="color: var(--text-primary);">Select Pages</p>
+                                        <p class="text-sm" style="color: var(--text-secondary);">Choose from discovered pages</p>
                                     </div>
                                 </label>
                                 <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
                                     <input type="radio" name="captureMode" value="manual" class="mr-3" onchange="toggleCaptureMode()">
                                     <div>
                                         <p class="font-medium" style="color: var(--text-primary);">Manual</p>
-                                        <p class="text-sm" style="color: var(--text-secondary);">Specify pages or user flows</p>
+                                        <p class="text-sm" style="color: var(--text-secondary);">Specify URLs manually</p>
                                     </div>
                                 </label>
+                            </div>
+                        </div>
+
+                        <!-- Discover Pages Button (for select mode) -->
+                        <div id="discoverSection" class="hidden mb-6">
+                            <button
+                                onclick="discoverPages()"
+                                id="discoverBtn"
+                                class="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 transition text-white font-semibold rounded-xl flex items-center justify-center space-x-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <span>Discover Pages</span>
+                            </button>
+                        </div>
+
+                        <!-- Page Selection List (Hidden until discovered) -->
+                        <div id="pageSelection" class="hidden mb-6">
+                            <div class="glass-card p-4" style="background: var(--surface-variant);">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-medium" style="color: var(--text-primary);">Discovered Pages</h5>
+                                    <div class="flex items-center space-x-2">
+                                        <button onclick="selectAllPages()" class="text-xs text-cyan-400 hover:text-cyan-300">Select All</button>
+                                        <span style="color: var(--text-secondary);">|</span>
+                                        <button onclick="deselectAllPages()" class="text-xs text-cyan-400 hover:text-cyan-300">Deselect All</button>
+                                    </div>
+                                </div>
+                                <div id="pageList" class="space-y-2 max-h-64 overflow-y-auto">
+                                    <!-- Pages will be populated here -->
+                                </div>
                             </div>
                         </div>
 
@@ -1803,15 +1841,76 @@
         }
 
         // Screenshot Generator Functions
+        // Screenshot Generator Functions
         function toggleCaptureMode() {
             const captureMode = document.querySelector('input[name="captureMode"]:checked').value;
             const manualInput = document.getElementById('manualInput');
+            const discoverSection = document.getElementById('discoverSection');
+            const pageSelection = document.getElementById('pageSelection');
+
+            // Hide all sections first
+            manualInput.classList.add('hidden');
+            discoverSection.classList.add('hidden');
 
             if (captureMode === 'manual') {
                 manualInput.classList.remove('hidden');
-            } else {
-                manualInput.classList.add('hidden');
+            } else if (captureMode === 'select') {
+                discoverSection.classList.remove('hidden');
+                // Keep pageSelection visible if pages were already discovered
             }
+        }
+
+        let discoveredPages = [];
+
+        async function discoverPages() {
+            const discoverBtn = document.getElementById('discoverBtn');
+            const pageSelection = document.getElementById('pageSelection');
+
+            discoverBtn.disabled = true;
+            discoverBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div> Discovering...';
+
+            try {
+                const response = await fetch(`/project/{{ project.id }}/screenshots/discover`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    discoveredPages = data.pages;
+                    displayDiscoveredPages(data.pages);
+                    pageSelection.classList.remove('hidden');
+                } else {
+                    throw new Error(data.error || 'Failed to discover pages');
+                }
+            } catch (error) {
+                alert('Error discovering pages: ' + error.message);
+            } finally {
+                discoverBtn.disabled = false;
+                discoverBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg><span>Re-discover Pages</span>';
+            }
+        }
+
+        function displayDiscoveredPages(pages) {
+            const pageList = document.getElementById('pageList');
+            pageList.innerHTML = pages.map((page, index) => `
+                <label class="flex items-center p-3 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 1px solid var(--border-subtle);">
+                    <input type="checkbox" name="selectedPages" value="${index}" checked class="mr-3">
+                    <div class="flex-1">
+                        <p class="font-medium text-sm" style="color: var(--text-primary);">${page.title || page.path}</p>
+                        <p class="text-xs" style="color: var(--text-secondary);">${page.url}</p>
+                    </div>
+                </label>
+            `).join('');
+        }
+
+        function selectAllPages() {
+            document.querySelectorAll('input[name="selectedPages"]').forEach(cb => cb.checked = true);
+        }
+
+        function deselectAllPages() {
+            document.querySelectorAll('input[name="selectedPages"]').forEach(cb => cb.checked = false);
         }
 
         let currentScreenshotJobId = null;
@@ -1834,6 +1933,20 @@
             const captureMode = document.querySelector('input[name="captureMode"]:checked').value;
             const instructions = document.getElementById('screenshotInstructions').value;
 
+            // Get selected pages if in select mode
+            let selectedPages = [];
+            if (captureMode === 'select') {
+                const selectedCheckboxes = document.querySelectorAll('input[name="selectedPages"]:checked');
+                if (selectedCheckboxes.length === 0) {
+                    alert('Please select at least one page to capture');
+                    return;
+                }
+                selectedPages = Array.from(selectedCheckboxes).map(cb => {
+                    const index = parseInt(cb.value);
+                    return discoveredPages[index];
+                });
+            }
+
             // Show progress, hide results
             generateBtn.disabled = true;
             generateBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div> Generating...';
@@ -1847,7 +1960,8 @@
                     body: JSON.stringify({
                         devices: devices,
                         mode: captureMode,
-                        instructions: instructions
+                        instructions: instructions,
+                        selected_pages: selectedPages
                     })
                 });
 
