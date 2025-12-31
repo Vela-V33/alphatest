@@ -20,6 +20,7 @@ from crawler import AppCrawler
 from agent import AlphaTestAgent
 from report_generator import generate_report
 from issue_tracker import IssueTracker
+from screenshot_generator import ScreenshotGenerator, generate_ai_description
 import auth
 
 app = Flask(__name__)
@@ -31,11 +32,14 @@ socketio = SocketIO(app, cors_allowed_origins=allowed_origins, async_mode='threa
 # Data directories
 DATA_DIR = Path(__file__).parent / "data"
 REPORTS_DIR = Path(__file__).parent / "reports"
+SCREENSHOTS_DIR = Path(__file__).parent / "screenshots"
 DATA_DIR.mkdir(exist_ok=True)
 REPORTS_DIR.mkdir(exist_ok=True)
+SCREENSHOTS_DIR.mkdir(exist_ok=True)
 
-# Store active test sessions
+# Store active test sessions and screenshot jobs
 active_sessions = {}
+active_screenshot_jobs = {}
 
 def load_projects():
     """Load all saved projects."""
@@ -375,6 +379,59 @@ def project_reports(project_id):
                     })
     
     return render_template('reports.html', project=project, reports=reports)
+
+@app.route('/project/<project_id>/screenshots/generate', methods=['POST'])
+@login_required
+def generate_screenshots(project_id):
+    """Generate marketing screenshots with device frames."""
+    projects = load_projects()
+    project = projects.get(project_id)
+    if not project:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+    # Get request data
+    data = request.json
+    devices = data.get('devices', [])
+    mode = data.get('mode', 'auto')
+    instructions = data.get('instructions', '')
+
+    if not devices:
+        return jsonify({'success': False, 'error': 'No devices selected'}), 400
+
+    # Generate job ID
+    job_id = f"screenshot_{project_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    # Start screenshot generation in background thread
+    thread = threading.Thread(
+        target=run_screenshot_generation,
+        args=(project_id, job_id, project, devices, mode, instructions)
+    )
+    thread.start()
+
+    # Store job info
+    active_screenshot_jobs[job_id] = {
+        'project_id': project_id,
+        'status': 'running',
+        'thread': thread
+    }
+
+    return jsonify({'success': True, 'job_id': job_id})
+
+@app.route('/project/<project_id>/screenshots/<job_id>/download')
+@login_required
+def download_screenshots(project_id, job_id):
+    """Download screenshot ZIP file."""
+    zip_path = SCREENSHOTS_DIR / f"{job_id}.zip"
+
+    if not zip_path.exists():
+        return "Screenshot package not found", 404
+
+    return send_from_directory(
+        SCREENSHOTS_DIR,
+        f"{job_id}.zip",
+        as_attachment=True,
+        download_name=f"alphatest_screenshots_{project_id}.zip"
+    )
 
 @app.route('/project/<project_id>/pulse')
 def project_pulse_dashboard(project_id):
@@ -1453,6 +1510,202 @@ def handle_crawl(data):
     
     thread = threading.Thread(target=run_crawl)
     thread.start()
+
+def run_screenshot_generation(project_id, job_id, project, devices, mode, instructions):
+    """Background task for screenshot generation."""
+    async def generate_async():
+        from playwright.async_api import async_playwright
+
+        generator = ScreenshotGenerator(project_id, output_dir=str(SCREENSHOTS_DIR / job_id))
+        config = load_config()
+        api_key = config.get('anthropic_api_key')
+
+        try:
+            # Emit progress
+            socketio.emit('screenshot_progress', {
+                'progress': 10,
+                'status': 'Initializing browser...'
+            }, room=job_id)
+
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                context = await browser.new_context(viewport={'width': 1920, 'height': 1080})
+                page = await context.new_page()
+
+                # Navigate to app
+                socketio.emit('screenshot_progress', {
+                    'progress': 20,
+                    'status': f'Loading {project["url"]}...'
+                }, room=job_id)
+
+                await page.goto(project['url'], wait_until='networkidle')
+
+                # Login if credentials provided
+                if project.get('email') and project.get('password'):
+                    login_url = project.get('login_url') or project['url']
+                    await page.goto(login_url, wait_until='networkidle')
+
+                    # Try to find and fill email/password fields
+                    try:
+                        email_input = await page.query_selector('input[type="email"], input[name*="email" i], input[id*="email" i]')
+                        if email_input:
+                            await email_input.fill(project['email'])
+
+                        password_input = await page.query_selector('input[type="password"]')
+                        if password_input:
+                            await password_input.fill(project['password'])
+
+                        # Find and click submit button
+                        submit_button = await page.query_selector('button[type="submit"], button:has-text("Log in"), button:has-text("Sign in")')
+                        if submit_button:
+                            await submit_button.click()
+                            await page.wait_for_load_state('networkidle')
+                    except:
+                        pass
+
+                # Determine pages to capture
+                pages_to_capture = []
+
+                if mode == 'auto':
+                    socketio.emit('screenshot_progress', {
+                        'progress': 30,
+                        'status': 'Discovering pages...'
+                    }, room=job_id)
+
+                    # Auto-discover pages (simple crawler)
+                    pages_to_capture.append({
+                        'url': page.url,
+                        'name': 'Homepage'
+                    })
+
+                    # Find links and add a few pages
+                    links = await page.query_selector_all('a[href]')
+                    seen_urls = {page.url}
+                    for link in links[:10]:  # Limit to 10 pages
+                        try:
+                            href = await link.get_attribute('href')
+                            if href and href.startswith(('/','http')):
+                                full_url = href if href.startswith('http') else project['url'].rstrip('/') + href
+                                if full_url not in seen_urls:
+                                    text = await link.inner_text()
+                                    pages_to_capture.append({
+                                        'url': full_url,
+                                        'name': text[:50] if text else full_url.split('/')[-1]
+                                    })
+                                    seen_urls.add(full_url)
+                        except:
+                            continue
+
+                else:  # Manual mode
+                    # Parse instructions
+                    if not instructions:
+                        pages_to_capture.append({
+                            'url': page.url,
+                            'name': 'Current Page'
+                        })
+                    else:
+                        # Parse URLs from instructions
+                        lines = instructions.split('\n')
+                        for line in lines:
+                            line = line.strip()
+                            if line.startswith('/') or line.startswith('http'):
+                                url = line if line.startswith('http') else project['url'].rstrip('/') + line
+                                pages_to_capture.append({
+                                    'url': url,
+                                    'name': url.split('/')[-1] or 'Page'
+                                })
+
+                # Capture screenshots
+                total_captures = len(pages_to_capture) * len(devices)
+                current_capture = 0
+                all_screenshots = []
+
+                for page_info in pages_to_capture:
+                    try:
+                        await page.goto(page_info['url'], wait_until='networkidle', timeout=30000)
+                        await page.wait_for_timeout(2000)  # Let page settle
+
+                        # Capture raw screenshot
+                        screenshot_bytes = await page.screenshot(full_page=True, type='png')
+
+                        # Generate AI description
+                        ai_desc = generate_ai_description(screenshot_bytes, api_key) if api_key else "Screenshot captured"
+
+                        # Apply device frames
+                        for device_type in devices:
+                            current_capture += 1
+                            progress = 40 + int((current_capture / total_captures) * 50)
+
+                            socketio.emit('screenshot_progress', {
+                                'progress': progress,
+                                'status': f'Capturing {page_info["name"]} on {device_type}...'
+                            }, room=job_id)
+
+                            # Apply frame
+                            frame_image, spec = generator.apply_device_frame(screenshot_bytes, device_type)
+
+                            # Generate metadata
+                            metadata = generator.generate_metadata(
+                                url=page_info['url'],
+                                description=page_info['name'],
+                                ai_description=ai_desc
+                            )
+
+                            # Save screenshot
+                            file_path = generator.save_screenshot(
+                                frame_image,
+                                metadata,
+                                device_type,
+                                page_info['name']
+                            )
+
+                            all_screenshots.append({
+                                'device': device_type,
+                                'page': page_info['name'],
+                                'preview_url': f'/project/{project_id}/screenshots/{job_id}/preview/{Path(file_path).name}',
+                                'metadata': metadata
+                            })
+
+                    except Exception as e:
+                        print(f"Error capturing {page_info['url']}: {e}")
+                        continue
+
+                await browser.close()
+
+            # Create ZIP
+            socketio.emit('screenshot_progress', {
+                'progress': 95,
+                'status': 'Creating download package...'
+            }, room=job_id)
+
+            zip_path = generator.create_zip_archive(output_filename=f"{job_id}.zip")
+
+            # Complete
+            socketio.emit('screenshot_complete', {
+                'screenshots': all_screenshots,
+                'zip_url': f'/project/{project_id}/screenshots/{job_id}/download'
+            }, room=job_id)
+
+            # Update job status
+            if job_id in active_screenshot_jobs:
+                active_screenshot_jobs[job_id]['status'] = 'completed'
+
+        except Exception as e:
+            print(f"Screenshot generation error: {e}")
+            import traceback
+            traceback.print_exc()
+            socketio.emit('screenshot_error', {
+                'error': str(e)
+            }, room=job_id)
+
+            if job_id in active_screenshot_jobs:
+                active_screenshot_jobs[job_id]['status'] = 'failed'
+
+    # Run async task
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(generate_async())
+    loop.close()
 
 @socketio.on('run_test')
 def handle_test(data):

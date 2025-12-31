@@ -80,6 +80,9 @@
                 <button onclick="showTab('test')" id="tab-test" class="tab-btn">
                     Run Tests
                 </button>
+                <button onclick="showTab('screenshots')" id="tab-screenshots" class="tab-btn">
+                    Screenshots
+                </button>
                 <button onclick="showTab('users')" id="tab-users" class="tab-btn">
                     Users
                 </button>
@@ -414,6 +417,195 @@
                             <span class="text-slate-500 text-sm">Screenshots will appear here during testing</span>
                         </div>
                         <div id="testStatus" class="mt-4 text-sm text-slate-400"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Screenshots -->
+            <div id="panel-screenshots" class="tab-panel hidden">
+                <div class="glass-card p-8 max-w-4xl mx-auto">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 mx-auto mb-6 rounded-full stat-icon-blue flex items-center justify-center">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-medium mb-3" style="color: var(--text-primary);">Generate Marketing Screenshots</h3>
+                        <p class="text-base mb-2" style="color: var(--text-secondary);">Create professional app screenshots with device frames for marketing, demos, and documentation.</p>
+                    </div>
+
+                    <!-- Screenshot Configuration -->
+                    <div class="glass-card p-6 mb-6" style="background: var(--surface-variant);">
+                        <h4 class="font-medium mb-4" style="color: var(--text-primary);">Capture Settings</h4>
+
+                        <!-- Capture Mode -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium mb-3" style="color: var(--text-primary);">
+                                Capture Mode
+                            </label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
+                                    <input type="radio" name="captureMode" value="auto" checked class="mr-3" onchange="toggleCaptureMode()">
+                                    <div>
+                                        <p class="font-medium" style="color: var(--text-primary);">Automatic</p>
+                                        <p class="text-sm" style="color: var(--text-secondary);">AI discovers and captures all pages</p>
+                                    </div>
+                                </label>
+                                <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
+                                    <input type="radio" name="captureMode" value="manual" class="mr-3" onchange="toggleCaptureMode()">
+                                    <div>
+                                        <p class="font-medium" style="color: var(--text-primary);">Manual</p>
+                                        <p class="text-sm" style="color: var(--text-secondary);">Specify pages or user flows</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Manual Input (Hidden by default) -->
+                        <div id="manualInput" class="hidden mb-6">
+                            <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">
+                                Pages or Instructions
+                            </label>
+                            <textarea
+                                id="screenshotInstructions"
+                                rows="4"
+                                placeholder="Examples:&#10;• List URLs: /home, /pricing, /features&#10;• Natural language: 'Capture the checkout flow from cart to confirmation'&#10;• Mix both: /dashboard, then click Settings, then capture Profile page"
+                                class="w-full px-4 py-3 rounded-lg"
+                                style="background: var(--surface); border: 1px solid var(--border-subtle); color: var(--text-primary);"
+                            ></textarea>
+                            <p class="text-xs mt-2" style="color: var(--text-secondary);">
+                                Specify URLs, user flows, or natural language instructions for what to capture
+                            </p>
+                        </div>
+
+                        <!-- Device Frames -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium mb-3" style="color: var(--text-primary);">
+                                Device Frames <span class="text-xs font-normal" style="color: var(--text-secondary);">(Select one or more)</span>
+                            </label>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <label class="relative flex items-center p-3 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
+                                    <input type="checkbox" name="deviceFrames" value="macbook" checked class="mr-3">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-5 h-5" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="font-medium text-sm" style="color: var(--text-primary);">MacBook Pro</span>
+                                    </div>
+                                </label>
+                                <label class="relative flex items-center p-3 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
+                                    <input type="checkbox" name="deviceFrames" value="iphone" checked class="mr-3">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-5 h-5" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="font-medium text-sm" style="color: var(--text-primary);">iPhone 15 Pro</span>
+                                    </div>
+                                </label>
+                                <label class="relative flex items-center p-3 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
+                                    <input type="checkbox" name="deviceFrames" value="android" class="mr-3">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-5 h-5" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="font-medium text-sm" style="color: var(--text-primary);">Pixel 8 Pro</span>
+                                    </div>
+                                </label>
+                                <label class="relative flex items-center p-3 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
+                                    <input type="checkbox" name="deviceFrames" value="ipad" class="mr-3">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-5 h-5" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="font-medium text-sm" style="color: var(--text-primary);">iPad Pro</span>
+                                    </div>
+                                </label>
+                                <label class="relative flex items-center p-3 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
+                                    <input type="checkbox" name="deviceFrames" value="desktop" class="mr-3">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-5 h-5" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="font-medium text-sm" style="color: var(--text-primary);">Desktop Browser</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <button
+                            onclick="generateScreenshots()"
+                            id="generateBtn"
+                            class="w-full py-4 bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-600 hover:to-sky-600 transition transform hover:scale-105 shadow-lg shadow-cyan-500/30 text-white font-bold rounded-xl flex items-center justify-center space-x-2"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>Generate Screenshots</span>
+                        </button>
+                    </div>
+
+                    <!-- Progress Section (Hidden initially) -->
+                    <div id="screenshotProgress" class="hidden glass-card p-6 mb-6">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-cyan-500"></div>
+                            <h4 class="font-medium" style="color: var(--text-primary);">Generating Screenshots...</h4>
+                        </div>
+                        <div class="space-y-2">
+                            <p id="progressStatus" class="text-sm" style="color: var(--text-secondary);">Starting...</p>
+                            <div class="w-full bg-gray-700 rounded-full h-2">
+                                <div id="progressBar" class="bg-gradient-to-r from-cyan-500 to-sky-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Section (Hidden initially) -->
+                    <div id="screenshotResults" class="hidden">
+                        <div class="glass-card p-6 mb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-medium" style="color: var(--text-primary);">Generated Screenshots</h4>
+                                <button
+                                    onclick="downloadScreenshots()"
+                                    id="downloadBtn"
+                                    class="btn-primary inline-flex items-center space-x-2"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    <span>Download ZIP</span>
+                                </button>
+                            </div>
+                            <div id="screenshotGrid" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <!-- Screenshots will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Section -->
+                    <div class="glass-card p-6" style="background: var(--surface-variant);">
+                        <h4 class="font-medium mb-3" style="color: var(--text-primary);">📦 What you'll get:</h4>
+                        <div class="space-y-2 text-sm" style="color: var(--text-secondary);">
+                            <div class="flex items-start space-x-2">
+                                <span class="text-cyan-400">✓</span>
+                                <p><strong>High-resolution PNG files</strong> with transparent backgrounds</p>
+                            </div>
+                            <div class="flex items-start space-x-2">
+                                <span class="text-cyan-400">✓</span>
+                                <p><strong>Device frames</strong> - MacBook, iPhone, Android, iPad, Desktop</p>
+                            </div>
+                            <div class="flex items-start space-x-2">
+                                <span class="text-cyan-400">✓</span>
+                                <p><strong>Organized ZIP file</strong> with folders for each device type</p>
+                            </div>
+                            <div class="flex items-start space-x-2">
+                                <span class="text-cyan-400">✓</span>
+                                <p><strong>AI-generated descriptions</strong> for each screenshot (JSON metadata)</p>
+                            </div>
+                            <div class="flex items-start space-x-2">
+                                <span class="text-cyan-400">✓</span>
+                                <p><strong>Ready for marketing</strong> - use in demos, websites, presentations</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1588,6 +1780,159 @@
                 localStorage.setItem('theme', newTheme);
                 updateThemeIcons(newTheme);
             });
+        }
+
+        // Screenshot Generator Functions
+        function toggleCaptureMode() {
+            const captureMode = document.querySelector('input[name="captureMode"]:checked').value;
+            const manualInput = document.getElementById('manualInput');
+
+            if (captureMode === 'manual') {
+                manualInput.classList.remove('hidden');
+            } else {
+                manualInput.classList.add('hidden');
+            }
+        }
+
+        let currentScreenshotJobId = null;
+
+        async function generateScreenshots() {
+            const generateBtn = document.getElementById('generateBtn');
+            const progressSection = document.getElementById('screenshotProgress');
+            const resultsSection = document.getElementById('screenshotResults');
+
+            // Get selected devices
+            const deviceCheckboxes = document.querySelectorAll('input[name="deviceFrames"]:checked');
+            const devices = Array.from(deviceCheckboxes).map(cb => cb.value);
+
+            if (devices.length === 0) {
+                alert('Please select at least one device frame');
+                return;
+            }
+
+            // Get capture mode and instructions
+            const captureMode = document.querySelector('input[name="captureMode"]:checked').value;
+            const instructions = document.getElementById('screenshotInstructions').value;
+
+            // Show progress, hide results
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div> Generating...';
+            progressSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+
+            try {
+                const response = await fetch(`/project/{{ project.id }}/screenshots/generate`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        devices: devices,
+                        mode: captureMode,
+                        instructions: instructions
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentScreenshotJobId = data.job_id;
+                    // Monitor progress via Socket.IO
+                    monitorScreenshotProgress(data.job_id);
+                } else {
+                    throw new Error(data.error || 'Failed to start screenshot generation');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+                resetScreenshotUI();
+            }
+        }
+
+        function monitorScreenshotProgress(jobId) {
+            const socket = io();
+
+            socket.emit('join', {project_id: '{{ project.id }}', job_id: jobId});
+
+            socket.on('screenshot_progress', (data) => {
+                updateProgress(data.progress, data.status);
+            });
+
+            socket.on('screenshot_complete', (data) => {
+                displayScreenshots(data.screenshots, data.zip_url);
+                resetScreenshotUI();
+                socket.disconnect();
+            });
+
+            socket.on('screenshot_error', (data) => {
+                alert('Error generating screenshots: ' + data.error);
+                resetScreenshotUI();
+                socket.disconnect();
+            });
+        }
+
+        function updateProgress(progress, status) {
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressStatus').textContent = status;
+        }
+
+        function displayScreenshots(screenshots, zipUrl) {
+            const resultsSection = document.getElementById('screenshotResults');
+            const grid = document.getElementById('screenshotGrid');
+
+            // Clear previous results
+            grid.innerHTML = '';
+
+            // Group screenshots by page
+            const grouped = {};
+            screenshots.forEach(ss => {
+                if (!grouped[ss.page]) {
+                    grouped[ss.page] = [];
+                }
+                grouped[ss.page].push(ss);
+            });
+
+            // Display grouped screenshots
+            Object.keys(grouped).forEach(pageName => {
+                const pageScreenshots = grouped[pageName];
+
+                const pageCard = document.createElement('div');
+                pageCard.className = 'glass-card p-4 md:col-span-3';
+                pageCard.innerHTML = `
+                    <h5 class="font-medium mb-3" style="color: var(--text-primary);">${pageName}</h5>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        ${pageScreenshots.map(ss => `
+                            <div class="relative group">
+                                <img src="${ss.preview_url}" alt="${ss.device}" class="w-full rounded-lg border border-white/10 group-hover:border-cyan-500 transition">
+                                <p class="text-xs text-center mt-2" style="color: var(--text-secondary);">${ss.device}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                grid.appendChild(pageCard);
+            });
+
+            // Store zip URL for download
+            document.getElementById('downloadBtn').onclick = () => {
+                window.location.href = zipUrl;
+            };
+
+            resultsSection.classList.remove('hidden');
+        }
+
+        function resetScreenshotUI() {
+            const generateBtn = document.getElementById('generateBtn');
+            const progressSection = document.getElementById('screenshotProgress');
+
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>Generate Screenshots</span>
+            `;
+            progressSection.classList.add('hidden');
+        }
+
+        function downloadScreenshots() {
+            // Download button click handled in displayScreenshots function
         }
     </script>
 </body>
