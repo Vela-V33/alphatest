@@ -1634,56 +1634,100 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                 current_capture = 0
                 all_screenshots = []
 
+                print(f"[SCREENSHOT] Found {len(pages_to_capture)} pages to capture")
+                print(f"[SCREENSHOT] Total captures: {total_captures}")
+
                 for page_info in pages_to_capture:
                     try:
+                        print(f"[SCREENSHOT] Navigating to: {page_info['url']}")
                         await page.goto(page_info['url'], wait_until='networkidle', timeout=30000)
                         await page.wait_for_timeout(2000)  # Let page settle
 
                         # Capture raw screenshot
+                        print(f"[SCREENSHOT] Capturing screenshot of {page_info['name']}")
                         screenshot_bytes = await page.screenshot(full_page=True, type='png')
+                        print(f"[SCREENSHOT] Screenshot captured, size: {len(screenshot_bytes)} bytes")
+
+                        # Send live preview to frontend
+                        import base64
+                        preview_b64 = base64.b64encode(screenshot_bytes).decode('utf-8')
+                        socketio.emit('screenshot_preview', {
+                            'page': page_info['name'],
+                            'url': page_info['url'],
+                            'preview': f'data:image/png;base64,{preview_b64[:1000]}...',  # Send thumbnail
+                        }, room=job_id)
 
                         # Generate AI description
-                        ai_desc = generate_ai_description(screenshot_bytes, api_key) if api_key else "Screenshot captured"
+                        try:
+                            if api_key:
+                                print(f"[SCREENSHOT] Generating AI description for {page_info['name']}")
+                                ai_desc = generate_ai_description(screenshot_bytes, api_key)
+                                print(f"[SCREENSHOT] AI description: {ai_desc[:100]}...")
+                            else:
+                                ai_desc = "Screenshot captured"
+                                print(f"[SCREENSHOT] No API key, using default description")
+                        except Exception as ai_error:
+                            print(f"[SCREENSHOT] AI description failed: {ai_error}")
+                            ai_desc = "Screenshot captured"
 
                         # Apply device frames
                         for device_type in devices:
                             current_capture += 1
                             progress = 40 + int((current_capture / total_captures) * 50)
 
+                            print(f"[SCREENSHOT] Applying {device_type} frame to {page_info['name']}")
                             socketio.emit('screenshot_progress', {
                                 'progress': progress,
                                 'status': f'Capturing {page_info["name"]} on {device_type}...'
                             }, room=job_id)
 
-                            # Apply frame
-                            frame_image, spec = generator.apply_device_frame(screenshot_bytes, device_type)
+                            try:
+                                # Apply frame
+                                frame_image, spec = generator.apply_device_frame(screenshot_bytes, device_type)
+                                print(f"[SCREENSHOT] Frame applied: {device_type}, size: {frame_image.size}")
 
-                            # Generate metadata
-                            metadata = generator.generate_metadata(
-                                url=page_info['url'],
-                                description=page_info['name'],
-                                ai_description=ai_desc
-                            )
+                                # Generate metadata
+                                metadata = generator.generate_metadata(
+                                    url=page_info['url'],
+                                    description=page_info['name'],
+                                    ai_description=ai_desc
+                                )
 
-                            # Save screenshot
-                            file_path = generator.save_screenshot(
-                                frame_image,
-                                metadata,
-                                device_type,
-                                page_info['name']
-                            )
+                                # Save screenshot
+                                file_path = generator.save_screenshot(
+                                    frame_image,
+                                    metadata,
+                                    device_type,
+                                    page_info['name']
+                                )
+                                print(f"[SCREENSHOT] Saved to: {file_path}")
 
-                            all_screenshots.append({
-                                'device': device_type,
-                                'page': page_info['name'],
-                                'preview_url': f'/project/{project_id}/screenshots/{job_id}/preview/{Path(file_path).name}',
-                                'metadata': metadata
-                            })
+                                all_screenshots.append({
+                                    'device': device_type,
+                                    'page': page_info['name'],
+                                    'preview_url': f'/project/{project_id}/screenshots/{job_id}/preview/{Path(file_path).name}',
+                                    'metadata': metadata
+                                })
+                            except Exception as frame_error:
+                                print(f"[SCREENSHOT] Error applying {device_type} frame: {frame_error}")
+                                import traceback
+                                traceback.print_exc()
+                                # Continue with next device
 
                     except Exception as e:
-                        print(f"Error capturing {page_info['url']}: {e}")
+                        print(f"[SCREENSHOT] ERROR capturing {page_info['url']}: {e}")
+                        import traceback
+                        traceback.print_exc()
+
+                        # Notify user of page failure
+                        socketio.emit('screenshot_page_error', {
+                            'page': page_info['name'],
+                            'url': page_info['url'],
+                            'error': str(e)
+                        }, room=job_id)
                         continue
 
+                print(f"[SCREENSHOT] Captured {len(all_screenshots)} total screenshots")
                 await browser.close()
 
             # Create ZIP
