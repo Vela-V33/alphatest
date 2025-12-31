@@ -391,67 +391,98 @@ def discover_pages(project_id):
 
     async def discover_async():
         from playwright.async_api import async_playwright
+        from urllib.parse import urljoin, urlparse
 
-        pages = []
+        discovered_pages = []
+        visited_urls = set()
+        to_visit = [project['url']]
+        base_domain = urlparse(project['url']).netloc
+
+        print(f"[DISCOVERY] Starting crawl from {project['url']}")
+
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context(viewport={'width': 1920, 'height': 1080})
             page = await context.new_page()
 
             try:
-                # Navigate to base URL
-                await page.goto(project['url'], wait_until='networkidle', timeout=30000)
+                # Crawl up to 100 pages max (to prevent infinite loops)
+                max_pages = 100
 
-                # Add homepage
-                title = await page.title()
-                pages.append({
-                    'url': page.url,
-                    'path': '/',
-                    'title': title or 'Homepage'
-                })
+                while to_visit and len(discovered_pages) < max_pages:
+                    current_url = to_visit.pop(0)
 
-                # Find all links
-                links = await page.query_selector_all('a[href]')
-                seen_urls = {page.url}
-
-                for link in links[:50]:  # Limit to 50 links
-                    try:
-                        href = await link.get_attribute('href')
-                        if not href:
-                            continue
-
-                        # Build full URL
-                        if href.startswith('http'):
-                            full_url = href
-                        elif href.startswith('/'):
-                            full_url = project['url'].rstrip('/') + href
-                        else:
-                            continue
-
-                        # Skip if already seen, external, or anchor
-                        if full_url in seen_urls or '#' in href or not full_url.startswith(project['url']):
-                            continue
-
-                        seen_urls.add(full_url)
-
-                        # Get link text
-                        text = await link.inner_text()
-                        path = full_url.replace(project['url'], '') or '/'
-
-                        pages.append({
-                            'url': full_url,
-                            'path': path,
-                            'title': text[:100] if text else path
-                        })
-                    except:
+                    # Skip if already visited
+                    if current_url in visited_urls:
                         continue
 
+                    visited_urls.add(current_url)
+                    print(f"[DISCOVERY] Crawling {len(discovered_pages) + 1}/{max_pages}: {current_url}")
+
+                    try:
+                        # Navigate to page
+                        await page.goto(current_url, wait_until='networkidle', timeout=15000)
+
+                        # Get page title
+                        title = await page.title()
+                        path = current_url.replace(project['url'].rstrip('/'), '') or '/'
+
+                        # Add to discovered pages
+                        discovered_pages.append({
+                            'url': current_url,
+                            'path': path,
+                            'title': title or path
+                        })
+
+                        # Find all links on this page
+                        links = await page.query_selector_all('a[href]')
+
+                        for link in links:
+                            try:
+                                href = await link.get_attribute('href')
+                                if not href:
+                                    continue
+
+                                # Build absolute URL
+                                absolute_url = urljoin(current_url, href)
+
+                                # Parse URL
+                                parsed = urlparse(absolute_url)
+
+                                # Skip if:
+                                # - Already visited
+                                # - External domain
+                                # - Anchor link
+                                # - File download (pdf, zip, etc)
+                                # - Mailto/tel links
+                                if (absolute_url in visited_urls or
+                                    absolute_url in to_visit or
+                                    parsed.netloc != base_domain or
+                                    '#' in parsed.fragment or
+                                    parsed.scheme in ['mailto', 'tel'] or
+                                    any(absolute_url.endswith(ext) for ext in ['.pdf', '.zip', '.jpg', '.png', '.gif', '.doc', '.xls'])):
+                                    continue
+
+                                # Add to queue
+                                to_visit.append(absolute_url)
+
+                            except Exception as link_error:
+                                continue
+
+                    except Exception as page_error:
+                        print(f"[DISCOVERY] Error crawling {current_url}: {page_error}")
+                        continue
+
+                print(f"[DISCOVERY] Crawl complete. Found {len(discovered_pages)} pages")
+
             except Exception as e:
-                print(f"Error discovering pages: {e}")
+                print(f"[DISCOVERY] Fatal error: {e}")
+                import traceback
+                traceback.print_exc()
             finally:
                 await browser.close()
 
-        return pages
+        return discovered_pages
 
     # Run discovery
     loop = asyncio.new_event_loop()
