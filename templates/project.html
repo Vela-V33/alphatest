@@ -1847,11 +1847,20 @@
         }
 
         function monitorScreenshotProgress(jobId) {
+            console.log('[Screenshot] Connecting to Socket.IO for job:', jobId);
             const socket = io();
 
-            socket.emit('join', {project_id: '{{ project.id }}', job_id: jobId});
+            socket.on('connect', () => {
+                console.log('[Screenshot] Socket connected, joining room:', jobId);
+                socket.emit('join', {project_id: '{{ project.id }}', job_id: jobId});
+            });
+
+            socket.on('joined', (data) => {
+                console.log('[Screenshot] Successfully joined room:', data.room);
+            });
 
             socket.on('screenshot_progress', (data) => {
+                console.log('[Screenshot] Progress update:', data);
                 updateProgress(data.progress, data.status);
             });
 
@@ -1862,7 +1871,13 @@
             });
 
             socket.on('screenshot_error', (data) => {
-                alert('Error generating screenshots: ' + data.error);
+                console.error('Screenshot error:', data);
+                let errorMsg = 'Error generating screenshots: ' + data.error;
+                if (data.details) {
+                    console.error('Error details:', data.details);
+                    errorMsg += '\n\nCheck browser console for details.';
+                }
+                alert(errorMsg);
                 resetScreenshotUI();
                 socket.disconnect();
             });

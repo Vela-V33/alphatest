@@ -1462,6 +1462,15 @@ def add_triage_note(project_id):
 def handle_connect():
     emit('status', {'message': 'Connected to AlphaTest'})
 
+@socketio.on('join')
+def handle_join(data):
+    """Join a Socket.IO room for real-time updates."""
+    from flask_socketio import join_room
+    room = data.get('job_id') or data.get('project_id')
+    if room:
+        join_room(room)
+        emit('joined', {'room': room})
+
 @socketio.on('start_crawl')
 def handle_crawl(data):
     """Start crawling an app."""
@@ -1513,14 +1522,19 @@ def handle_crawl(data):
 
 def run_screenshot_generation(project_id, job_id, project, devices, mode, instructions):
     """Background task for screenshot generation."""
+    print(f"[SCREENSHOT] Starting job {job_id} for project {project_id}")
+    print(f"[SCREENSHOT] Devices: {devices}, Mode: {mode}")
+
     async def generate_async():
         from playwright.async_api import async_playwright
 
+        print(f"[SCREENSHOT] Initializing generator for job {job_id}")
         generator = ScreenshotGenerator(project_id, output_dir=str(SCREENSHOTS_DIR / job_id))
         config = load_config()
         api_key = config.get('anthropic_api_key')
 
         try:
+            print(f"[SCREENSHOT] Starting async generation for job {job_id}")
             # Emit progress
             socketio.emit('screenshot_progress', {
                 'progress': 10,
@@ -1691,11 +1705,21 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                 active_screenshot_jobs[job_id]['status'] = 'completed'
 
         except Exception as e:
-            print(f"Screenshot generation error: {e}")
+            error_msg = f"Screenshot generation error: {e}"
+            print(error_msg)
             import traceback
             traceback.print_exc()
+
+            # Log to console for Cloud Run logs
+            import sys
+            print(f"SCREENSHOT ERROR for job {job_id}:", file=sys.stderr)
+            print(f"  Error: {str(e)}", file=sys.stderr)
+            print(f"  Type: {type(e).__name__}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+
             socketio.emit('screenshot_error', {
-                'error': str(e)
+                'error': str(e),
+                'details': traceback.format_exc()
             }, room=job_id)
 
             if job_id in active_screenshot_jobs:
