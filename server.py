@@ -633,21 +633,26 @@ def discover_pages(project_id):
                             except:
                                 continue
 
-                        # Strategy 4: SPECIAL HANDLING for "select" or "choose" pages
-                        # If we're on a selection page with no links, try clicking the first clickable element
-                        if len(found_links) == 0 and ('select' in current_url.lower() or 'choose' in current_url.lower() or 'organization' in current_url.lower()):
-                            print(f"[DISCOVERY] ⚠️  On selection page with no links - attempting to interact")
+                        # Strategy 4: AGGRESSIVE SPA HANDLING - Click through pages with no links
+                        # This is critical for SPAs that use JavaScript navigation everywhere
+                        if len(found_links) == 0:
+                            print(f"[DISCOVERY] ⚠️  No links found on this page - attempting SPA navigation")
 
-                            # Try to find and click organization cards, buttons, or tiles
+                            # Try to find and click interactive elements
                             clickable_selectors = [
                                 'button:not([type="submit"]):not([disabled])',
+                                'a:not([href])',  # React Router Link components without href
                                 '.card:not(.disabled)',
                                 '.tile',
-                                '.organization',
+                                '.menu-item',
+                                '.nav-item',
                                 '[role="button"]',
+                                '[role="tab"]',
                                 '.option',
                                 '.item',
-                                'div[onclick]'
+                                'div[onclick]',
+                                '[class*="button"]',
+                                '[class*="link"]'
                             ]
 
                             clicked = False
@@ -673,13 +678,28 @@ def discover_pages(project_id):
                                                 to_visit.append(new_url)
                                                 to_visit_normalized.add(normalized_new)
                                                 print(f"[DISCOVERY] ✓ Added new page to queue after click")
-                                            clicked = True
+                                                clicked = True
                                             break
                                         else:
                                             print(f"[DISCOVERY] Still on same page after clicking '{selector}'")
                                 except Exception as click_error:
                                     print(f"[DISCOVERY] Click attempt on '{selector}' failed: {click_error}")
                                     continue
+
+                            # If still no links after clicking, try to extract React Router / Vue Router paths
+                            if not clicked:
+                                print(f"[DISCOVERY] Looking for SPA route data in page...")
+                                try:
+                                    # Try to find data-* attributes that might contain routes
+                                    route_elements = await page.query_selector_all('[data-route], [data-path], [data-to]')
+                                    for elem in route_elements[:10]:  # Limit to 10
+                                        for attr in ['data-route', 'data-path', 'data-to']:
+                                            route = await elem.get_attribute(attr)
+                                            if route:
+                                                found_links.add(route)
+                                                print(f"[DISCOVERY] Found route in {attr}: {route}")
+                                except:
+                                    pass
 
                         print(f"[DISCOVERY] Total unique hrefs found: {len(found_links)}")
 
@@ -760,6 +780,67 @@ def discover_pages(project_id):
                 print(f"[DISCOVERY] Pages:")
                 for i, pg in enumerate(discovered_pages, 1):
                     print(f"[DISCOVERY]   {i}. {pg['title']} - {pg['url']}")
+
+                # INTELLIGENT SUGGESTION: Rank pages for marketing screenshots
+                print(f"\n[DISCOVERY] ===== ANALYZING PAGES FOR MARKETING VALUE =====")
+
+                def score_page_for_marketing(page_data):
+                    """Score a page's value for marketing screenshots (0-100)"""
+                    score = 50  # Base score
+                    url = page_data['url'].lower()
+                    title = page_data.get('title', '').lower()
+                    path = page_data.get('path', '').lower()
+
+                    # HIGH VALUE PAGES (add points)
+                    high_value_keywords = {
+                        'dashboard': 30, 'home': 25, 'overview': 25,
+                        'analytics': 20, 'report': 20, 'stats': 20,
+                        'project': 15, 'workspace': 15, 'board': 15,
+                        'calendar': 15, 'timeline': 15, 'gantt': 15,
+                        'kanban': 15, 'tasks': 12, 'issues': 12,
+                        'settings': -5, 'profile': 8, 'team': 10,
+                        'features': 25, 'gallery': 20, 'showcase': 20
+                    }
+
+                    for keyword, points in high_value_keywords.items():
+                        if keyword in url or keyword in title or keyword in path:
+                            score += points
+                            print(f"[DISCOVERY]   '{page_data['title']}' +{points} pts ({keyword})")
+
+                    # LOW VALUE PAGES (subtract points)
+                    low_value_keywords = ['login', 'signup', 'logout', 'auth', 'select', 'choose', 'error', '404', 'settings', 'preferences']
+                    for keyword in low_value_keywords:
+                        if keyword in url or keyword in title or keyword in path:
+                            score -= 15
+                            print(f"[DISCOVERY]   '{page_data['title']}' -15 pts ({keyword})")
+
+                    # Prefer root/short paths (more likely to be main features)
+                    path_depth = path.count('/')
+                    if path_depth <= 1:
+                        score += 10
+                        print(f"[DISCOVERY]   '{page_data['title']}' +10 pts (short path)")
+                    elif path_depth >= 4:
+                        score -= 10
+
+                    return max(0, min(100, score))  # Clamp to 0-100
+
+                # Score all pages
+                for page in discovered_pages:
+                    page['marketing_score'] = score_page_for_marketing(page)
+
+                # Sort by marketing score
+                discovered_pages.sort(key=lambda p: p['marketing_score'], reverse=True)
+
+                print(f"\n[DISCOVERY] ===== SUGGESTED PAGES FOR SCREENSHOTS =====")
+                print(f"[DISCOVERY] Top pages ranked by marketing value:")
+                for i, pg in enumerate(discovered_pages[:10], 1):  # Show top 10
+                    score = pg['marketing_score']
+                    emoji = "⭐" if score >= 70 else ("✨" if score >= 50 else "📄")
+                    print(f"[DISCOVERY]   {i}. {emoji} {pg['title']} (Score: {score}) - {pg['url']}")
+
+                # Mark suggested pages
+                for page in discovered_pages:
+                    page['suggested'] = page['marketing_score'] >= 50  # Suggest pages with score 50+
 
             except Exception as e:
                 print(f"[DISCOVERY] Fatal error: {e}")

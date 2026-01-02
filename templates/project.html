@@ -1927,15 +1927,54 @@
 
         function displayDiscoveredPages(pages) {
             const pageList = document.getElementById('pageList');
-            pageList.innerHTML = pages.map((page, index) => `
-                <label class="flex items-center p-3 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 1px solid var(--border-subtle);">
-                    <input type="checkbox" name="selectedPages" value="${index}" checked class="mr-3">
+
+            // Show summary
+            const suggested = pages.filter(p => p.suggested).length;
+            const summary = document.createElement('div');
+            summary.className = 'mb-4 p-4 rounded-lg';
+            summary.style = 'background: var(--surface-variant); border: 1px solid var(--border-color);';
+            summary.innerHTML = `
+                <p class="text-sm font-semibold mb-2" style="color: var(--text-primary);">
+                    📊 Discovered ${pages.length} pages • ⭐ ${suggested} suggested for marketing
+                </p>
+                <p class="text-xs" style="color: var(--text-secondary);">
+                    Pages are ranked by marketing value. Suggested pages (⭐) are pre-selected and ideal for screenshots.
+                </p>
+            `;
+            pageList.innerHTML = '';
+            pageList.appendChild(summary);
+
+            // Display pages with score indicators
+            pages.forEach((page, index) => {
+                const score = page.marketing_score || 50;
+                const suggested = page.suggested || false;
+                const emoji = score >= 70 ? "⭐" : (score >= 50 ? "✨" : "📄");
+
+                const label = document.createElement('label');
+                label.className = 'flex items-center p-3 glass-card cursor-pointer hover:border-cyan-500 transition';
+                label.style = suggested
+                    ? 'border: 2px solid var(--alphatest-sky); background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(14, 165, 233, 0.05));'
+                    : 'border: 1px solid var(--border-subtle);';
+
+                label.innerHTML = `
+                    <input type="checkbox" name="selectedPages" value="${index}" ${suggested ? 'checked' : ''} class="mr-3">
                     <div class="flex-1">
-                        <p class="font-medium text-sm" style="color: var(--text-primary);">${page.title || page.path}</p>
-                        <p class="text-xs" style="color: var(--text-secondary);">${page.url}</p>
+                        <div class="flex items-center justify-between">
+                            <p class="font-medium text-sm flex items-center" style="color: var(--text-primary);">
+                                <span class="mr-2">${emoji}</span>
+                                ${page.title || page.path}
+                                ${suggested ? '<span class="ml-2 text-xs px-2 py-0.5 rounded" style="background: var(--alphatest-sky); color: white;">Suggested</span>' : ''}
+                            </p>
+                            <span class="text-xs px-2 py-1 rounded" style="background: var(--surface); color: var(--text-secondary);">
+                                Score: ${score}
+                            </span>
+                        </div>
+                        <p class="text-xs mt-1" style="color: var(--text-secondary);">${page.url}</p>
                     </div>
-                </label>
-            `).join('');
+                `;
+
+                pageList.appendChild(label);
+            });
         }
 
         function selectAllPages() {
