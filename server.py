@@ -406,6 +406,39 @@ def discover_pages(project_id):
             page = await context.new_page()
 
             try:
+                # Login if credentials provided
+                if project.get('email') and project.get('password'):
+                    login_url = project.get('login_url') or project['url']
+                    print(f"[DISCOVERY] Logging in at {login_url}")
+                    await page.goto(login_url, wait_until='networkidle', timeout=15000)
+
+                    # Try to find and fill email/password fields
+                    try:
+                        email_input = await page.query_selector('input[type="email"], input[name*="email" i], input[id*="email" i]')
+                        if email_input:
+                            await email_input.fill(project['email'])
+                            print("[DISCOVERY] Filled email")
+
+                        password_input = await page.query_selector('input[type="password"]')
+                        if password_input:
+                            await password_input.fill(project['password'])
+                            print("[DISCOVERY] Filled password")
+
+                        # Find and click submit button
+                        submit_button = await page.query_selector('button[type="submit"], button:has-text("Log in"), button:has-text("Sign in")')
+                        if submit_button:
+                            await submit_button.click()
+                            print("[DISCOVERY] Clicked login button")
+                            await page.wait_for_load_state('networkidle')
+
+                            # After login, navigate to homepage
+                            await page.goto(project['url'], wait_until='networkidle', timeout=15000)
+                            await page.wait_for_timeout(2000)  # Let the app settle
+                            print(f"[DISCOVERY] Logged in successfully, at: {page.url}")
+                    except Exception as login_error:
+                        print(f"[DISCOVERY] Login error: {login_error}")
+                        pass
+
                 # Crawl up to 100 pages max (to prevent infinite loops)
                 max_pages = 100
 
