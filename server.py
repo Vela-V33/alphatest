@@ -2236,8 +2236,28 @@ def handle_test(data):
                         password=project['password']
                     )
                 
-                # Run the test
-                result = await agent.run_command(command)
+                # Run the test with step limit
+                result = await agent.run_command(command, max_steps=10)
+
+                # Check if test hit step limit and needs continuation
+                if result.get('status') == 'running' and len(result.get('steps', [])) >= 10:
+                    # Test paused at step limit - ask user if they want to continue
+                    socketio.emit('test_progress', {'message': '⏸️ Reached 10 steps. Ready to continue?'})
+
+                    # Generate intermediate report
+                    report_data = agent.get_report_data()
+                    report_path = generate_report(report_data, report_dir, project)
+
+                    # Emit continuation request
+                    socketio.emit('test_complete', {
+                        'status': 'needs_continuation',
+                        'result': result,
+                        'steps_completed': len(result.get('steps', [])),
+                        'report_url': f'/reports/{project_id}/{session_id}'
+                    })
+
+                    # Keep browser open for continuation - don't close yet
+                    return
 
                 # Run compliance scans after test
                 socketio.emit('test_progress', {'message': '[Query] Running compliance scans...'})

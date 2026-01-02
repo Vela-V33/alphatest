@@ -373,7 +373,7 @@
                             <h3 class="font-semibold text-white">Chat with AlphaTest</h3>
                         </div>
 
-                        <div id="chatLog" class="chat-container h-64 mb-4 space-y-2">
+                        <div id="chatLog" class="chat-container h-64 mb-4 space-y-2 overflow-y-auto overflow-x-hidden p-3 rounded-lg" style="background: var(--surface); border: 1px solid var(--border-subtle); word-break: break-word;">
                             <div class="text-slate-500 text-sm">Tell me what to test in plain English...</div>
                         </div>
 
@@ -1570,13 +1570,47 @@
                 const filename = pathParts[screenshotsIndex + 1];
                 const imageUrl = `/reports/${projectId}/${reportId}/screenshots/${filename}`;
 
-                // Display the screenshot
+                // Show loading state
                 document.getElementById('livePreview').innerHTML = `
-                    <img src="${imageUrl}"
-                         alt="Live Screenshot"
-                         class="w-full h-full object-contain rounded-lg"
-                         onerror="this.parentElement.innerHTML='<div class=\\'text-center text-red-400 text-sm p-4\\'>Failed to load screenshot</div>'">
+                    <div class="text-center text-slate-400 text-sm p-4">
+                        <div class="animate-pulse">Loading screenshot...</div>
+                    </div>
                 `;
+
+                // Try to load the image with retry logic
+                let retryCount = 0;
+                const maxRetries = 3;
+
+                function loadImage() {
+                    const img = new Image();
+                    img.onload = function() {
+                        // Successfully loaded
+                        document.getElementById('livePreview').innerHTML = `
+                            <img src="${imageUrl}?t=${Date.now()}"
+                                 alt="Live Screenshot"
+                                 class="w-full h-full object-contain rounded-lg">
+                        `;
+                    };
+                    img.onerror = function() {
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            // Retry after 500ms
+                            setTimeout(loadImage, 500);
+                        } else {
+                            // Failed after all retries
+                            document.getElementById('livePreview').innerHTML = `
+                                <div class="text-center text-red-400 text-sm p-4">
+                                    <div class="mb-2">⚠️ Failed to load screenshot</div>
+                                    <button onclick="location.reload()" class="text-xs text-cyan-400 hover:underline">Refresh Page</button>
+                                </div>
+                            `;
+                        }
+                    };
+                    img.src = imageUrl + '?t=' + Date.now();  // Add cache buster
+                }
+
+                // Start loading with a small delay to ensure file is written
+                setTimeout(loadImage, 300);
             } else {
                 document.getElementById('livePreview').innerHTML = '<div class="text-center text-slate-400 text-sm p-4">Screenshot captured</div>';
             }
@@ -1585,22 +1619,21 @@
         socket.on('test_complete', (data) => {
             // Check if test needs continuation
             if (data.status === 'needs_continuation') {
-                addChatMessage('Test paused at max steps', 'bot');
-                addChatMessage('View progress: ' + data.report_url, 'bot');
+                addChatMessage('⏸️ Test paused at ' + (data.steps_completed || 10) + ' steps', 'bot');
+                addChatMessage('📊 View progress: ' + data.report_url, 'bot');
 
                 // Add continue button
-                const chatMessages = document.getElementById('chatMessages');
+                const chatLog = document.getElementById('chatLog');
                 const btnContainer = document.createElement('div');
-                btnContainer.className = 'message bot-message flex justify-start mb-3';
+                btnContainer.className = 'mt-2 p-3 rounded-lg' + (document.documentElement.getAttribute('data-theme') === 'dark' ? ' bg-slate-700/30' : ' bg-white/10');
                 btnContainer.innerHTML = `
-                    <div class="bg-slate-700/30 backdrop-blur-sm px-4 py-2 rounded-2xl max-w-[80%]">
-                        <button onclick="continueTest()" class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-600 hover:to-sky-600 shadow-lg shadow-cyan-500/30 text-white rounded-lg transition font-semibold">
-                            Continue Testing (25 more steps)
-                        </button>
-                    </div>
+                    <p class="text-sm mb-2" style="color: var(--text-secondary);">Completed ${data.steps_completed || 10} steps. Would you like to continue?</p>
+                    <button onclick="continueTest()" class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-600 hover:to-sky-600 shadow-lg shadow-cyan-500/30 text-white rounded-lg transition font-semibold">
+                        ▶ Continue Testing (10 more steps)
+                    </button>
                 `;
-                chatMessages.appendChild(btnContainer);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                chatLog.appendChild(btnContainer);
+                chatLog.scrollTop = chatLog.scrollHeight;
             } else {
                 addChatMessage('Test completed!', 'bot');
                 addChatMessage('View report: ' + data.report_url, 'bot');
@@ -1615,9 +1648,9 @@
 
         // Function to continue test
         function continueTest() {
-            const userInput = document.getElementById('userInput');
-            const currentCommand = userInput.value || userInput.placeholder || 'Continue testing';
-            userInput.value = currentCommand;
+            const chatInput = document.getElementById('chatInput');
+            const currentCommand = chatInput.value || chatInput.placeholder || 'Continue testing';
+            chatInput.value = currentCommand;
             document.getElementById('sendBtn').click();
         }
 
