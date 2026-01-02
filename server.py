@@ -383,495 +383,127 @@ def project_reports(project_id):
 @app.route('/project/<project_id>/screenshots/discover', methods=['POST'])
 @login_required
 def discover_pages(project_id):
-    """Discover pages in the website for screenshot selection."""
+    """Discover pages using AI agent - same as Run Test."""
     projects = load_projects()
     project = projects.get(project_id)
     if not project:
         return jsonify({'success': False, 'error': 'Project not found'}), 404
 
     async def discover_async():
-        from playwright.async_api import async_playwright
-        from urllib.parse import urljoin, urlparse
+        from agent import AlphaTestAgent
 
         discovered_pages = []
-        visited_urls = set()
-        to_visit = []  # Will be set after login
-        base_domain = urlparse(project['url']).netloc
 
         print(f"\n" + "="*80)
-        print(f"[DISCOVERY] STARTING PAGE DISCOVERY")
+        print(f"[DISCOVERY] AI-POWERED PAGE DISCOVERY")
         print(f"[DISCOVERY] Project: {project.get('name', 'Unknown')}")
-        print(f"[DISCOVERY] Main URL: {project['url']}")
-        print(f"[DISCOVERY] Base domain: {base_domain}")
-        print(f"[DISCOVERY] Has email: {'Yes' if project.get('email') else 'No'}")
-        print(f"[DISCOVERY] Has password: {'Yes' if project.get('password') else 'No'}")
-        print(f"[DISCOVERY] Login URL: {project.get('login_url') or project['url']}")
+        print(f"[DISCOVERY] URL: {project['url']}")
+        print(f"[DISCOVERY] Using AlphaTestAgent (proven to work)")
         print(f"="*80 + "\n")
 
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context(viewport={'width': 1920, 'height': 1080})
-            page = await context.new_page()
-
-            try:
-                # Login if credentials provided - USE ROBUST METHOD FROM AGENT.PY
-                if project.get('email') and project.get('password'):
-                    login_url = project.get('login_url') or project['url']
-                    print(f"[DISCOVERY] 🔐 Logging in at {login_url}")
-                    await page.goto(login_url, wait_until='networkidle', timeout=30000)
-                    await page.wait_for_timeout(2000)  # Wait for page to stabilize
-
-                    # Try multiple email selectors (from agent.py)
-                    email_filled = False
-                    email_selectors = [
-                        "input[type='email']",
-                        "input[name='email']",
-                        "input[name='username']",
-                        "input[id='email']",
-                        "input[id='username']",
-                        "input[placeholder*='email' i]",
-                        "input[placeholder*='user' i]",
-                        "input[autocomplete='email']",
-                        "input[autocomplete='username']"
-                    ]
-
-                    for sel in email_selectors:
-                        try:
-                            elem = await page.wait_for_selector(sel, timeout=3000, state='visible')
-                            if elem:
-                                await elem.fill(project['email'])
-                                email_filled = True
-                                print(f"[DISCOVERY]    ✓ Email entered using: {sel}")
-                                break
-                        except:
-                            continue
-
-                    if not email_filled:
-                        print("[DISCOVERY]    ✗ Could not find email field")
-                        # Continue anyway to homepage
-                        await page.goto(project['url'], wait_until='networkidle', timeout=15000)
-                        await page.wait_for_timeout(2000)
-                    else:
-                        # Try multiple password selectors
-                        password_filled = False
-                        password_selectors = [
-                            "input[type='password']",
-                            "input[name='password']",
-                            "input[id='password']",
-                            "input[placeholder*='password' i]",
-                            "input[autocomplete='current-password']"
-                        ]
-
-                        for sel in password_selectors:
-                            try:
-                                elem = await page.wait_for_selector(sel, timeout=3000, state='visible')
-                                if elem:
-                                    await elem.fill(project['password'])
-                                    password_filled = True
-                                    print(f"[DISCOVERY]    ✓ Password entered using: {sel}")
-                                    break
-                            except:
-                                continue
-
-                        if not password_filled:
-                            print("[DISCOVERY]    ✗ Could not find password field")
-                        else:
-                            # Find and click submit button
-                            submit_clicked = False
-                            submit_selectors = [
-                                "button[type='submit']",
-                                "input[type='submit']",
-                                "button:has-text('Log in')",
-                                "button:has-text('Login')",
-                                "button:has-text('Sign in')",
-                                "button:has-text('Submit')",
-                                "form button",
-                                ".login-button",
-                                "#login-button"
-                            ]
-
-                            for sel in submit_selectors:
-                                try:
-                                    elem = await page.wait_for_selector(sel, timeout=3000, state='visible')
-                                    if elem:
-                                        await elem.click()
-                                        submit_clicked = True
-                                        print(f"[DISCOVERY]    ✓ Clicked submit using: {sel}")
-                                        break
-                                except:
-                                    continue
-
-                            if submit_clicked:
-                                # Wait for navigation after login
-                                await page.wait_for_load_state('networkidle', timeout=30000)
-                                await page.wait_for_timeout(3000)  # Let app stabilize
-
-                                # Check if login succeeded
-                                current_url = page.url.lower()
-                                if 'login' not in current_url and 'signin' not in current_url and 'sign-in' not in current_url:
-                                    print(f"[DISCOVERY]    ✓ Login successful! Now at: {page.url}")
-                                else:
-                                    print(f"[DISCOVERY]    ⚠ Still on login page: {page.url}")
-                                    # Try navigating to homepage anyway
-                                    await page.goto(project['url'], wait_until='networkidle', timeout=15000)
-                                    await page.wait_for_timeout(2000)
-                            else:
-                                print("[DISCOVERY]    ✗ Could not find submit button")
-                else:
-                    # No login, just navigate to homepage
-                    await page.goto(project['url'], wait_until='networkidle', timeout=15000)
-                    await page.wait_for_timeout(2000)
-
-                # NOW set the starting point after login
-                start_url = page.url
-                to_visit = [start_url]
-                print(f"[DISCOVERY] Starting crawl from authenticated page: {start_url}")
-
-                # Helper function to normalize URLs
-                def normalize_url(url):
-                    """Remove trailing slashes and fragments for comparison."""
-                    parsed = urlparse(url)
-                    # Remove fragment
-                    query_part = f"?{parsed.query}" if parsed.query else ""
-                    normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}{query_part}"
-                    # Remove trailing slash unless it's the root
-                    if normalized.endswith('/') and len(parsed.path) > 1:
-                        normalized = normalized.rstrip('/')
-                    return normalized
-
-                # Crawl up to 100 pages max
-                max_pages = 100
-                link_count = 0
-                to_visit_normalized = set()  # Track normalized URLs in queue for faster lookup
-
-                while to_visit and len(discovered_pages) < max_pages:
-                    current_url = to_visit.pop(0)
-                    normalized_current = normalize_url(current_url)
-
-                    # Remove from queue tracking
-                    to_visit_normalized.discard(normalized_current)
-
-                    # Skip if already visited
-                    if normalized_current in visited_urls:
-                        print(f"[DISCOVERY] Skipping already visited: {current_url}")
-                        continue
-
-                    visited_urls.add(normalized_current)
-                    print(f"\n[DISCOVERY] ===== Crawling page {len(discovered_pages) + 1}/{max_pages} =====")
-                    print(f"[DISCOVERY] URL: {current_url}")
-
-                    try:
-                        # Navigate to page
-                        await page.goto(current_url, wait_until='networkidle', timeout=15000)
-                        await page.wait_for_timeout(1500)  # Wait for dynamic content
-
-                        # Get page title
-                        title = await page.title()
-                        path = current_url.replace(project['url'].rstrip('/'), '') or '/'
-
-                        # Add to discovered pages
-                        discovered_pages.append({
-                            'url': current_url,
-                            'path': path,
-                            'title': title or path
-                        })
-                        print(f"[DISCOVERY] ✓ Added: '{title}' ({path})")
-
-                        # AGGRESSIVE LINK DISCOVERY - Multiple strategies
-
-                        found_links = set()
-
-                        # Strategy 1: All anchor links
-                        links = await page.query_selector_all('a[href]')
-                        print(f"[DISCOVERY] Found {len(links)} anchor links")
-
-                        for link in links:
-                            try:
-                                href = await link.get_attribute('href')
-                                if href and href.strip():
-                                    found_links.add(href.strip())
-                            except:
-                                continue
-
-                        # Strategy 2: Navigation-specific elements
-                        nav_selectors = [
-                            'nav a[href]',
-                            '[role="navigation"] a[href]',
-                            '.nav a[href]',
-                            '.navbar a[href]',
-                            '.navigation a[href]',
-                            '.menu a[href]',
-                            '.sidebar a[href]',
-                            'header a[href]',
-                            '[class*="nav"] a[href]',
-                            '[id*="nav"] a[href]'
-                        ]
-
-                        for selector in nav_selectors:
-                            nav_links = await page.query_selector_all(selector)
-                            for link in nav_links:
-                                try:
-                                    href = await link.get_attribute('href')
-                                    if href and href.strip():
-                                        found_links.add(href.strip())
-                                except:
-                                    continue
-
-                        # Strategy 3: DETECT SPA - Check for buttons/cards with data attributes or click handlers
-                        # This handles apps that use JavaScript navigation instead of links
-                        spa_elements = await page.query_selector_all('button[data-url], [data-href], [data-link], .card[onclick], .tile[onclick], .item[onclick]')
-                        print(f"[DISCOVERY] Found {len(spa_elements)} SPA navigation elements")
-
-                        for elem in spa_elements:
-                            try:
-                                # Try to get URL from data attributes
-                                for attr in ['data-url', 'data-href', 'data-link', 'data-path']:
-                                    url = await elem.get_attribute(attr)
-                                    if url:
-                                        found_links.add(url)
-                                        break
-                            except:
-                                continue
-
-                        # Strategy 4: ULTRA-AGGRESSIVE SPA HANDLING
-                        # For SPAs, click through MULTIPLE navigation elements per page
-                        if len(found_links) == 0:
-                            print(f"[DISCOVERY] ⚠️  No links found - using ULTRA-AGGRESSIVE SPA mode")
-
-                            # Priority selectors for navigation (most likely to lead to new pages)
-                            nav_priority_selectors = [
-                                'nav a, nav button',  # Main navigation
-                                '[role="navigation"] a, [role="navigation"] button',
-                                '.sidebar a, .sidebar button, .sidebar [role="button"]',
-                                '.menu a, .menu button, .menu-item',
-                                '.nav-item, .nav-link',
-                                'header a:not([href*="logo"]), header button'
-                            ]
-
-                            # Try clicking MULTIPLE elements on this page
-                            clicked_new_pages = 0
-                            max_clicks_per_page = 15  # Try up to 15 elements per page
-
-                            for selector in nav_priority_selectors:
-                                try:
-                                    elements = await page.query_selector_all(selector)
-                                    print(f"[DISCOVERY] Found {len(elements)} elements matching '{selector}'")
-
-                                    for i, elem in enumerate(elements[:max_clicks_per_page]):
-                                        if clicked_new_pages >= max_clicks_per_page:
-                                            break
-
-                                        try:
-                                            # Get element text for logging
-                                            text = await elem.inner_text()
-                                            text = text.strip()[:30] if text else f"Element {i+1}"
-
-                                            print(f"[DISCOVERY] Clicking '{text}'...")
-
-                                            # Save current URL
-                                            before_url = page.url
-
-                                            # Click and wait
-                                            await elem.click()
-                                            await page.wait_for_load_state('networkidle', timeout=10000)
-                                            await page.wait_for_timeout(1000)
-
-                                            # Check if navigated
-                                            after_url = page.url
-                                            if after_url != before_url:
-                                                normalized_new = normalize_url(after_url)
-                                                if normalized_new not in visited_urls and normalized_new not in to_visit_normalized:
-                                                    to_visit.append(after_url)
-                                                    to_visit_normalized.add(normalized_new)
-                                                    clicked_new_pages += 1
-                                                    print(f"[DISCOVERY] ✓ NEW PAGE: {after_url}")
-
-                                                    # Navigate back to continue clicking other elements
-                                                    await page.goto(before_url, wait_until='networkidle', timeout=10000)
-                                                    await page.wait_for_timeout(1000)
-                                                else:
-                                                    print(f"[DISCOVERY] Already queued: {after_url}")
-                                                    # Go back anyway
-                                                    await page.goto(before_url, wait_until='networkidle', timeout=10000)
-                                                    await page.wait_for_timeout(500)
-                                            else:
-                                                print(f"[DISCOVERY] No navigation from '{text}'")
-
-                                        except Exception as elem_error:
-                                            print(f"[DISCOVERY] Error clicking element: {elem_error}")
-                                            # Try to recover by going back to the current page
-                                            try:
-                                                await page.goto(current_url, wait_until='networkidle', timeout=10000)
-                                                await page.wait_for_timeout(500)
-                                            except:
-                                                pass
-                                            continue
-
-                                except Exception as selector_error:
-                                    print(f"[DISCOVERY] Error with selector '{selector}': {selector_error}")
-                                    continue
-
-                            print(f"[DISCOVERY] Discovered {clicked_new_pages} new pages from this page")
-
-                            # If we found pages via clicking, we're done with this page
-                            if clicked_new_pages > 0:
-                                print(f"[DISCOVERY] Total unique hrefs found: 0 (SPA mode found {clicked_new_pages} via clicking)")
-                                # Skip the href processing below since we found pages via clicking
-                                print(f"[DISCOVERY] Queue size: {len(to_visit)} pages remaining")
-                                print(f"[DISCOVERY] Discovered so far: {len(discovered_pages)} pages")
-                                continue  # Skip to next page in queue
-
-                        print(f"[DISCOVERY] Total unique hrefs found: {len(found_links)}")
-
-                        # Process all found links
-                        for href in found_links:
-                            link_count += 1
-                            try:
-                                # Build absolute URL
-                                absolute_url = urljoin(current_url, href)
-                                parsed = urlparse(absolute_url)
-                                normalized_absolute = normalize_url(absolute_url)
-
-                                # Debug logging for first few links
-                                if link_count <= 10:
-                                    print(f"[DISCOVERY] Processing link {link_count}: {href} -> {absolute_url}")
-
-                                # Skip if already processed
-                                if normalized_absolute in visited_urls:
-                                    if link_count <= 10:
-                                        print(f"[DISCOVERY]   ✗ Already visited")
-                                    continue
-
-                                if normalized_absolute in to_visit_normalized:
-                                    if link_count <= 10:
-                                        print(f"[DISCOVERY]   ✗ Already in queue")
-                                    continue
-
-                                # Check domain
-                                if parsed.netloc != base_domain:
-                                    if link_count <= 10:
-                                        print(f"[DISCOVERY]   ✗ External domain: {parsed.netloc}")
-                                    continue
-
-                                # Skip anchor-only links (fragments with no path change)
-                                if parsed.fragment and parsed.path == urlparse(current_url).path:
-                                    if link_count <= 10:
-                                        print(f"[DISCOVERY]   ✗ Anchor link only")
-                                    continue
-
-                                # Skip mailto/tel
-                                if parsed.scheme in ['mailto', 'tel', 'javascript']:
-                                    if link_count <= 10:
-                                        print(f"[DISCOVERY]   ✗ Invalid scheme: {parsed.scheme}")
-                                    continue
-
-                                # Skip file downloads
-                                if any(absolute_url.lower().endswith(ext) for ext in ['.pdf', '.zip', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.doc', '.docx', '.xls', '.xlsx', '.csv']):
-                                    if link_count <= 10:
-                                        print(f"[DISCOVERY]   ✗ File download")
-                                    continue
-
-                                # Skip logout/login pages
-                                if any(keyword in absolute_url.lower() for keyword in ['logout', 'signout', 'sign-out', 'log-out']):
-                                    if link_count <= 10:
-                                        print(f"[DISCOVERY]   ✗ Logout page")
-                                    continue
-
-                                # Add to queue!
-                                to_visit.append(absolute_url)
-                                to_visit_normalized.add(normalized_absolute)
-                                if link_count <= 10:
-                                    print(f"[DISCOVERY]   ✓ Added to queue!")
-
-                            except Exception as link_error:
-                                if link_count <= 10:
-                                    print(f"[DISCOVERY]   ✗ Error: {link_error}")
-                                continue
-
-                        print(f"[DISCOVERY] Queue size: {len(to_visit)} pages remaining")
-                        print(f"[DISCOVERY] Discovered so far: {len(discovered_pages)} pages")
-
-                    except Exception as page_error:
-                        print(f"[DISCOVERY] ✗ Error crawling {current_url}: {page_error}")
-                        continue
-
-                print(f"\n[DISCOVERY] ===== CRAWL COMPLETE =====")
-                print(f"[DISCOVERY] Total pages discovered: {len(discovered_pages)}")
-                print(f"[DISCOVERY] Pages:")
-                for i, pg in enumerate(discovered_pages, 1):
-                    print(f"[DISCOVERY]   {i}. {pg['title']} - {pg['url']}")
-
-                # INTELLIGENT SUGGESTION: Rank pages for marketing screenshots
-                print(f"\n[DISCOVERY] ===== ANALYZING PAGES FOR MARKETING VALUE =====")
-
-                def score_page_for_marketing(page_data):
-                    """Score a page's value for marketing screenshots (0-100)"""
-                    score = 50  # Base score
-                    url = page_data['url'].lower()
-                    title = page_data.get('title', '').lower()
-                    path = page_data.get('path', '').lower()
-
-                    # HIGH VALUE PAGES (add points)
-                    high_value_keywords = {
-                        'dashboard': 30, 'home': 25, 'overview': 25,
-                        'analytics': 20, 'report': 20, 'stats': 20,
-                        'project': 15, 'workspace': 15, 'board': 15,
-                        'calendar': 15, 'timeline': 15, 'gantt': 15,
-                        'kanban': 15, 'tasks': 12, 'issues': 12,
-                        'settings': -5, 'profile': 8, 'team': 10,
-                        'features': 25, 'gallery': 20, 'showcase': 20
-                    }
-
-                    for keyword, points in high_value_keywords.items():
-                        if keyword in url or keyword in title or keyword in path:
-                            score += points
-                            print(f"[DISCOVERY]   '{page_data['title']}' +{points} pts ({keyword})")
-
-                    # LOW VALUE PAGES (subtract points)
-                    low_value_keywords = ['login', 'signup', 'logout', 'auth', 'select', 'choose', 'error', '404', 'settings', 'preferences']
-                    for keyword in low_value_keywords:
-                        if keyword in url or keyword in title or keyword in path:
-                            score -= 15
-                            print(f"[DISCOVERY]   '{page_data['title']}' -15 pts ({keyword})")
-
-                    # Prefer root/short paths (more likely to be main features)
-                    path_depth = path.count('/')
-                    if path_depth <= 1:
-                        score += 10
-                        print(f"[DISCOVERY]   '{page_data['title']}' +10 pts (short path)")
-                    elif path_depth >= 4:
-                        score -= 10
-
-                    return max(0, min(100, score))  # Clamp to 0-100
-
-                # Score all pages
-                for page in discovered_pages:
-                    page['marketing_score'] = score_page_for_marketing(page)
-
-                # Sort by marketing score
-                discovered_pages.sort(key=lambda p: p['marketing_score'], reverse=True)
-
-                print(f"\n[DISCOVERY] ===== SUGGESTED PAGES FOR SCREENSHOTS =====")
-                print(f"[DISCOVERY] Top pages ranked by marketing value:")
-                for i, pg in enumerate(discovered_pages[:10], 1):  # Show top 10
-                    score = pg['marketing_score']
-                    emoji = "⭐" if score >= 70 else ("✨" if score >= 50 else "📄")
-                    print(f"[DISCOVERY]   {i}. {emoji} {pg['title']} (Score: {score}) - {pg['url']}")
-
-                # Mark suggested pages
-                for page in discovered_pages:
-                    page['suggested'] = page['marketing_score'] >= 50  # Suggest pages with score 50+
-
-            except Exception as e:
-                print(f"[DISCOVERY] Fatal error: {e}")
-                import traceback
-                traceback.print_exc()
-            finally:
-                await browser.close()
+        config = load_config()
+        api_key = config.get('anthropic_api_key')
+
+        if not api_key:
+            print("[DISCOVERY] ERROR: No Anthropic API key")
+            return []
+
+        agent = AlphaTestAgent(
+            api_key=api_key,
+            status_callback=lambda msg: print(f"[DISCOVERY] {msg}"),
+            browser_type=project.get('browser_type', 'chromium')
+        )
+
+        try:
+            await agent.initialize()
+            await agent.page.goto(project['url'], wait_until='networkidle', timeout=30000)
+
+            # Login
+            if project.get('email') and project.get('password'):
+                print(f"[DISCOVERY] Logging in...")
+                await agent.login(
+                    login_url=project.get('login_url') or project['url'],
+                    email=project['email'],
+                    password=project['password']
+                )
+
+            # AI explores app
+            print(f"[DISCOVERY] AI exploring entire app...")
+            await agent.run_command(
+                """Thoroughly explore this web application. Navigate through ALL navigation menus,
+                sidebar items, and main features. Click through every section to discover all pages.
+                Visit dashboard, projects, reports, settings, and any other pages you find.
+                Do NOT logout or modify data.""",
+                max_steps=30
+            )
+
+            # Extract discovered URLs
+            visited_urls = list(set(agent.nav_tracker.get_current_path()))
+            print(f"\n[DISCOVERY] Found {len(visited_urls)} unique pages")
+
+            # Get titles for each page
+            for url in visited_urls:
+                try:
+                    await agent.page.goto(url, wait_until='networkidle', timeout=10000)
+                    title = await agent.page.title()
+                    path = url.replace(project['url'].rstrip('/'), '') or '/'
+
+                    discovered_pages.append({
+                        'url': url,
+                        'path': path,
+                        'title': title or path
+                    })
+                    print(f"[DISCOVERY] ✓ {title}")
+                except:
+                    discovered_pages.append({
+                        'url': url,
+                        'path': url.replace(project['url'].rstrip('/'), '') or '/',
+                        'title': url.split('/')[-1] or 'Page'
+                    })
+
+            # Score pages for marketing value
+            def score_page(pg):
+                score = 50
+                url, title, path = pg['url'].lower(), pg.get('title', '').lower(), pg.get('path', '').lower()
+
+                high_value = {'dashboard': 30, 'home': 25, 'overview': 25, 'analytics': 20,
+                             'report': 20, 'project': 15, 'workspace': 15, 'features': 25}
+                low_value = ['login', 'logout', 'signup', 'auth', 'select', 'error', '404']
+
+                for kw, pts in high_value.items():
+                    if kw in url or kw in title or kw in path:
+                        score += pts
+
+                for kw in low_value:
+                    if kw in url or kw in title or kw in path:
+                        score -= 15
+
+                if path.count('/') <= 1:
+                    score += 10
+
+                return max(0, min(100, score))
+
+            for pg in discovered_pages:
+                pg['marketing_score'] = score_page(pg)
+                pg['suggested'] = pg['marketing_score'] >= 50
+
+            discovered_pages.sort(key=lambda p: p['marketing_score'], reverse=True)
+
+            print(f"\n[DISCOVERY] TOP PAGES:")
+            for i, pg in enumerate(discovered_pages[:10], 1):
+                emoji = "⭐" if pg['marketing_score'] >= 70 else "✨"
+                print(f"[DISCOVERY]   {i}. {emoji} {pg['title']} (Score: {pg['marketing_score']})")
+
+        except Exception as e:
+            print(f"[DISCOVERY] Error: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            await agent.close()
 
         return discovered_pages
 
-    # Run discovery
+    # Run
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     discovered_pages = loop.run_until_complete(discover_async())
