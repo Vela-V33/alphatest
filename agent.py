@@ -2335,7 +2335,19 @@ Return ONLY valid JSON:
                 action = step.get('action', {})
                 result = step.get('result', {})
                 status = "✓" if result.get('success') else "[FAIL]"
-                recent_actions += f"{i+1}. {status} {action.get('type', 'unknown')} on {action.get('selector', 'N/A')} - {result.get('message', 'N/A')}\n"
+
+                # Handle both string and dict types for action
+                if isinstance(action, str):
+                    action_type = action
+                    action_selector = 'N/A'
+                elif isinstance(action, dict):
+                    action_type = action.get('type', 'unknown')
+                    action_selector = action.get('selector', 'N/A')
+                else:
+                    action_type = 'unknown'
+                    action_selector = 'N/A'
+
+                recent_actions += f"{i+1}. {status} {action_type} on {action_selector} - {result.get('message', 'N/A')}\n"
 
         user_message = f"""TASK: {task}
 {criteria_str}
