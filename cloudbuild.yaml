@@ -28,7 +28,7 @@ steps:
       - '--timeout=3600'
       - '--concurrency=80'
       - '--max-instances=10'
-      - '--set-env-vars=ENV=production'
+      - '--env-vars-file=env.yaml'
     id: 'deploy-cloud-run'
 
 # Store images in Container Registry
