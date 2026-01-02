@@ -395,10 +395,11 @@ def discover_pages(project_id):
 
         discovered_pages = []
         visited_urls = set()
-        to_visit = [project['url']]
+        to_visit = []  # Will be set after login
         base_domain = urlparse(project['url']).netloc
 
         print(f"[DISCOVERY] Starting crawl from {project['url']}")
+        print(f"[DISCOVERY] Base domain: {base_domain}")
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -433,28 +434,53 @@ def discover_pages(project_id):
 
                             # After login, navigate to homepage
                             await page.goto(project['url'], wait_until='networkidle', timeout=15000)
-                            await page.wait_for_timeout(2000)  # Let the app settle
+                            await page.wait_for_timeout(3000)  # Let the app settle and load dynamic content
                             print(f"[DISCOVERY] Logged in successfully, at: {page.url}")
                     except Exception as login_error:
                         print(f"[DISCOVERY] Login error: {login_error}")
                         pass
+                else:
+                    # No login, just navigate to homepage
+                    await page.goto(project['url'], wait_until='networkidle', timeout=15000)
+                    await page.wait_for_timeout(2000)
 
-                # Crawl up to 100 pages max (to prevent infinite loops)
+                # NOW set the starting point after login
+                start_url = page.url
+                to_visit = [start_url]
+                print(f"[DISCOVERY] Starting crawl from authenticated page: {start_url}")
+
+                # Helper function to normalize URLs
+                def normalize_url(url):
+                    """Remove trailing slashes and fragments for comparison."""
+                    parsed = urlparse(url)
+                    # Remove fragment
+                    normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}{parsed.query}"
+                    # Remove trailing slash unless it's the root
+                    if normalized.endswith('/') and len(parsed.path) > 1:
+                        normalized = normalized.rstrip('/')
+                    return normalized
+
+                # Crawl up to 100 pages max
                 max_pages = 100
+                link_count = 0
 
                 while to_visit and len(discovered_pages) < max_pages:
                     current_url = to_visit.pop(0)
+                    normalized_current = normalize_url(current_url)
 
                     # Skip if already visited
-                    if current_url in visited_urls:
+                    if normalized_current in visited_urls:
+                        print(f"[DISCOVERY] Skipping already visited: {current_url}")
                         continue
 
-                    visited_urls.add(current_url)
-                    print(f"[DISCOVERY] Crawling {len(discovered_pages) + 1}/{max_pages}: {current_url}")
+                    visited_urls.add(normalized_current)
+                    print(f"\n[DISCOVERY] ===== Crawling page {len(discovered_pages) + 1}/{max_pages} =====")
+                    print(f"[DISCOVERY] URL: {current_url}")
 
                     try:
                         # Navigate to page
                         await page.goto(current_url, wait_until='networkidle', timeout=15000)
+                        await page.wait_for_timeout(1500)  # Wait for dynamic content
 
                         # Get page title
                         title = await page.title()
@@ -466,47 +492,126 @@ def discover_pages(project_id):
                             'path': path,
                             'title': title or path
                         })
+                        print(f"[DISCOVERY] ✓ Added: '{title}' ({path})")
 
-                        # Find all links on this page
+                        # AGGRESSIVE LINK DISCOVERY - Multiple strategies
+
+                        found_links = set()
+
+                        # Strategy 1: All anchor links
                         links = await page.query_selector_all('a[href]')
+                        print(f"[DISCOVERY] Found {len(links)} anchor links")
 
                         for link in links:
                             try:
                                 href = await link.get_attribute('href')
-                                if not href:
-                                    continue
-
-                                # Build absolute URL
-                                absolute_url = urljoin(current_url, href)
-
-                                # Parse URL
-                                parsed = urlparse(absolute_url)
-
-                                # Skip if:
-                                # - Already visited
-                                # - External domain
-                                # - Anchor link
-                                # - File download (pdf, zip, etc)
-                                # - Mailto/tel links
-                                if (absolute_url in visited_urls or
-                                    absolute_url in to_visit or
-                                    parsed.netloc != base_domain or
-                                    '#' in parsed.fragment or
-                                    parsed.scheme in ['mailto', 'tel'] or
-                                    any(absolute_url.endswith(ext) for ext in ['.pdf', '.zip', '.jpg', '.png', '.gif', '.doc', '.xls'])):
-                                    continue
-
-                                # Add to queue
-                                to_visit.append(absolute_url)
-
-                            except Exception as link_error:
+                                if href and href.strip():
+                                    found_links.add(href.strip())
+                            except:
                                 continue
 
+                        # Strategy 2: Navigation-specific elements
+                        nav_selectors = [
+                            'nav a[href]',
+                            '[role="navigation"] a[href]',
+                            '.nav a[href]',
+                            '.navbar a[href]',
+                            '.navigation a[href]',
+                            '.menu a[href]',
+                            '.sidebar a[href]',
+                            'header a[href]',
+                            '[class*="nav"] a[href]',
+                            '[id*="nav"] a[href]'
+                        ]
+
+                        for selector in nav_selectors:
+                            nav_links = await page.query_selector_all(selector)
+                            for link in nav_links:
+                                try:
+                                    href = await link.get_attribute('href')
+                                    if href and href.strip():
+                                        found_links.add(href.strip())
+                                except:
+                                    continue
+
+                        print(f"[DISCOVERY] Total unique hrefs found: {len(found_links)}")
+
+                        # Process all found links
+                        for href in found_links:
+                            link_count += 1
+                            try:
+                                # Build absolute URL
+                                absolute_url = urljoin(current_url, href)
+                                parsed = urlparse(absolute_url)
+                                normalized_absolute = normalize_url(absolute_url)
+
+                                # Debug logging for first few links
+                                if link_count <= 10:
+                                    print(f"[DISCOVERY] Processing link {link_count}: {href} -> {absolute_url}")
+
+                                # Skip if already processed
+                                if normalized_absolute in visited_urls:
+                                    if link_count <= 10:
+                                        print(f"[DISCOVERY]   ✗ Already visited")
+                                    continue
+
+                                if normalized_absolute in [normalize_url(u) for u in to_visit]:
+                                    if link_count <= 10:
+                                        print(f"[DISCOVERY]   ✗ Already in queue")
+                                    continue
+
+                                # Check domain
+                                if parsed.netloc != base_domain:
+                                    if link_count <= 10:
+                                        print(f"[DISCOVERY]   ✗ External domain: {parsed.netloc}")
+                                    continue
+
+                                # Skip anchor-only links (fragments with no path change)
+                                if parsed.fragment and parsed.path == urlparse(current_url).path:
+                                    if link_count <= 10:
+                                        print(f"[DISCOVERY]   ✗ Anchor link only")
+                                    continue
+
+                                # Skip mailto/tel
+                                if parsed.scheme in ['mailto', 'tel', 'javascript']:
+                                    if link_count <= 10:
+                                        print(f"[DISCOVERY]   ✗ Invalid scheme: {parsed.scheme}")
+                                    continue
+
+                                # Skip file downloads
+                                if any(absolute_url.lower().endswith(ext) for ext in ['.pdf', '.zip', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.doc', '.docx', '.xls', '.xlsx', '.csv']):
+                                    if link_count <= 10:
+                                        print(f"[DISCOVERY]   ✗ File download")
+                                    continue
+
+                                # Skip logout/login pages
+                                if any(keyword in absolute_url.lower() for keyword in ['logout', 'signout', 'sign-out', 'log-out']):
+                                    if link_count <= 10:
+                                        print(f"[DISCOVERY]   ✗ Logout page")
+                                    continue
+
+                                # Add to queue!
+                                to_visit.append(absolute_url)
+                                if link_count <= 10:
+                                    print(f"[DISCOVERY]   ✓ Added to queue!")
+
+                            except Exception as link_error:
+                                if link_count <= 10:
+                                    print(f"[DISCOVERY]   ✗ Error: {link_error}")
+                                continue
+
+                        print(f"[DISCOVERY] Queue size: {len(to_visit)} pages remaining")
+                        print(f"[DISCOVERY] Discovered so far: {len(discovered_pages)} pages")
+
                     except Exception as page_error:
-                        print(f"[DISCOVERY] Error crawling {current_url}: {page_error}")
+                        print(f"[DISCOVERY] ✗ Error crawling {current_url}: {page_error}")
                         continue
 
-                print(f"[DISCOVERY] Crawl complete. Found {len(discovered_pages)} pages")
+                print(f"\n[DISCOVERY] ===== CRAWL COMPLETE =====")
+                print(f"[DISCOVERY] Total pages discovered: {len(discovered_pages)}")
+                print(f"[DISCOVERY] Pages:")
+                for i, pg in enumerate(discovered_pages, 1):
+                    print(f"[DISCOVERY]   {i}. {pg['title']} - {pg['url']}")
 
             except Exception as e:
                 print(f"[DISCOVERY] Fatal error: {e}")
