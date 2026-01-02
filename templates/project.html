@@ -18,25 +18,17 @@
             <div class="container mx-auto px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <a href="/dashboard" class="btn-ghost text-sm">
-                            ← Projects
+                        <a href="/dashboard" class="flex items-center space-x-3">
+                            <img src="/static/images/alphatest-logo.svg" alt="AlphaTest" class="h-8 w-8">
+                            <span class="text-lg font-semibold logo-text">AlphaTest</span>
                         </a>
-                        <div class="w-px h-6 bg-white/20"></div>
+                        <div class="w-px h-6" style="background: var(--divider);"></div>
                         <div>
-                            <h1 class="text-xl font-bold text-white">{{ project.name }}</h1>
-                            <p class="text-slate-400 text-sm truncate max-w-xs">{{ project.url }}</p>
+                            <h1 class="text-base font-medium" style="color: var(--text-primary);">{{ project.name }}</h1>
+                            <p class="text-xs truncate max-w-xs" style="color: var(--text-secondary);">{{ project.url }}</p>
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
-                        <!-- Theme Toggle -->
-                        <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
-                            <svg id="lightIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-                            </svg>
-                            <svg id="darkIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                            </svg>
-                        </button>
                         <a href="/project/{{ project.id }}/pulse" class="btn-secondary text-sm flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -62,6 +54,25 @@
                             </svg>
                             <span>Settings</span>
                         </button>
+                        <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                            <svg id="lightIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                            </svg>
+                            <svg id="darkIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                            </svg>
+                        </button>
+                        {% if user %}
+                        <div class="flex items-center space-x-3 pl-3" style="border-left: 1px solid var(--divider);">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: rgba(14, 165, 233, 0.2);">
+                                    <span class="font-medium text-sm" style="color: var(--alphatest-sky);">{{ (user.name or user.email or 'U')[0]|upper }}</span>
+                                </div>
+                                <span class="text-sm" style="color: var(--text-secondary);">{{ user.name or user.email }}</span>
+                            </div>
+                            <a href="/logout" class="btn-secondary text-sm">Logout</a>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -590,11 +601,21 @@
                                 <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-cyan-500"></div>
                                 <h4 class="font-medium" style="color: var(--text-primary);">Generating Screenshots...</h4>
                             </div>
+                            <div class="text-sm" style="color: var(--text-secondary);">
+                                <span id="estimatedTime"></span>
+                            </div>
                         </div>
                         <div class="space-y-2 mb-4">
-                            <p id="progressStatus" class="text-sm" style="color: var(--text-secondary);">Starting...</p>
-                            <div class="w-full bg-gray-700 rounded-full h-2">
-                                <div id="progressBar" class="bg-gradient-to-r from-cyan-500 to-sky-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            <div class="flex items-center justify-between">
+                                <p id="progressStatus" class="text-sm" style="color: var(--text-secondary);">Starting...</p>
+                                <p id="progressPercent" class="text-sm font-medium" style="color: var(--alphatest-sky);">0%</p>
+                            </div>
+                            <div class="w-full rounded-full h-3" style="background: var(--surface-container);">
+                                <div id="progressBar" class="bg-gradient-to-r from-cyan-500 to-sky-500 h-3 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-xs" style="color: var(--text-disabled);">
+                                <span id="pageCount"></span>
+                                <span id="elapsedTime">Elapsed: 0s</span>
                             </div>
                         </div>
 
@@ -2139,9 +2160,57 @@
             errorList.appendChild(errorDiv);
         }
 
-        function updateProgress(progress, status) {
+        let screenshotStartTime = null;
+        let screenshotTimerInterval = null;
+
+        function updateProgress(progress, status, totalPages = null, currentPage = null) {
+            // Start timer on first progress update
+            if (!screenshotStartTime) {
+                screenshotStartTime = Date.now();
+                screenshotTimerInterval = setInterval(updateElapsedTime, 1000);
+            }
+
+            // Update progress bar and text
             document.getElementById('progressBar').style.width = progress + '%';
             document.getElementById('progressStatus').textContent = status;
+            document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
+
+            // Update page count if provided
+            if (totalPages && currentPage) {
+                document.getElementById('pageCount').textContent = `Page ${currentPage} of ${totalPages}`;
+            }
+
+            // Calculate estimated time remaining
+            if (progress > 5) {
+                const elapsed = (Date.now() - screenshotStartTime) / 1000;
+                const estimatedTotal = (elapsed / progress) * 100;
+                const remaining = estimatedTotal - elapsed;
+
+                if (remaining > 60) {
+                    const mins = Math.ceil(remaining / 60);
+                    document.getElementById('estimatedTime').textContent = `~${mins} min remaining`;
+                } else {
+                    document.getElementById('estimatedTime').textContent = `~${Math.ceil(remaining)}s remaining`;
+                }
+            }
+        }
+
+        function updateElapsedTime() {
+            if (screenshotStartTime) {
+                const elapsed = Math.floor((Date.now() - screenshotStartTime) / 1000);
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+                document.getElementById('elapsedTime').textContent = `Elapsed: ${timeStr}`;
+            }
+        }
+
+        function resetScreenshotTimer() {
+            if (screenshotTimerInterval) {
+                clearInterval(screenshotTimerInterval);
+                screenshotTimerInterval = null;
+            }
+            screenshotStartTime = null;
         }
 
         function displayScreenshots(screenshots, zipUrl) {
@@ -2191,6 +2260,9 @@
         function resetScreenshotUI() {
             const generateBtn = document.getElementById('generateBtn');
             const progressSection = document.getElementById('screenshotProgress');
+
+            // Reset timer
+            resetScreenshotTimer();
 
             generateBtn.disabled = false;
             generateBtn.innerHTML = `

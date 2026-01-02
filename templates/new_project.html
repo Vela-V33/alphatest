@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,20 +8,40 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
+    <script>
+        // Load theme before page renders
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
 </head>
 <body>
-    <!-- Background Pattern -->
-    <div class="bg-pattern"></div>
-
     <!-- Content Wrapper -->
-    <div class="relative z-10 min-h-screen">
+    <div class="relative z-10 min-h-screen" style="background: var(--bg-primary);">
         <!-- Header -->
         <header class="header-glass">
-            <div class="container mx-auto px-6 py-5">
-                <div class="flex items-center space-x-4">
-                    <a href="/" class="btn-ghost text-sm">← Back</a>
-                    <div class="w-px h-6 bg-white/20"></div>
-                    <h1 class="text-xl font-bold text-white">New Project</h1>
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="/dashboard" class="flex items-center space-x-3">
+                            <img src="/static/images/alphatest-logo.svg" alt="AlphaTest" class="h-8 w-8">
+                            <span class="text-xl font-semibold logo-text">AlphaTest</span>
+                        </a>
+                        <div class="w-px h-6" style="background: var(--divider);"></div>
+                        <h1 class="text-lg font-medium" style="color: var(--text-primary);">New Project</h1>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                            <svg id="lightIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                            </svg>
+                            <svg id="darkIcon" class="hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                            </svg>
+                        </button>
+                        <a href="/dashboard" class="btn-secondary text-sm">
+                            Dashboard
+                        </a>
+                    </div>
                 </div>
             </div>
         </header>
@@ -31,12 +51,9 @@
             <div class="max-w-xl mx-auto">
                 <div class="glass-card p-8">
                     <!-- Header -->
-                    <div class="text-center mb-8">
-                        <div class="icon-container-lg mx-auto mb-4">
-                            
-                        </div>
-                        <h2 class="text-2xl font-bold text-white mb-2">Add a New Project</h2>
-                        <p class="text-slate-400">Enter your app details to start testing</p>
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold mb-2" style="color: var(--text-primary);">Add a New Project</h2>
+                        <p style="color: var(--text-secondary);">Enter your app details to start testing</p>
                     </div>
 
                     <!-- Form -->
@@ -114,7 +131,9 @@
 
                                 <!-- Info Box -->
                                 <div class="glass-card p-4 flex items-start space-x-3" style="background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3);">
-                                    <span class="text-xl">💡</span>
+                                    <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                     <p class="text-sm" style="color: var(--text-primary);">
                                         Use a dedicated test account, not your admin credentials. This keeps your main account safe.
                                     </p>
@@ -135,6 +154,34 @@
     </div>
 
     <script>
+        // Theme Toggle
+        function updateThemeIcon() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            const lightIcon = document.getElementById('lightIcon');
+            const darkIcon = document.getElementById('darkIcon');
+
+            if (theme === 'dark') {
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
+            } else {
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon();
+        });
+
+        // Initialize theme icon
+        updateThemeIcon();
+
+        // Form submission
         document.getElementById('projectForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
