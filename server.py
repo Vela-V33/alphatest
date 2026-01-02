@@ -1735,97 +1735,104 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                 elif mode == 'auto':
                     socketio.emit('screenshot_progress', {
                         'progress': 30,
-                        'status': 'Discovering pages...'
+                        'status': 'Using AI to discover all pages...'
                     }, room=job_id)
 
-                    # Auto-discover pages (enhanced crawler)
-                    pages_to_capture.append({
-                        'url': page.url,
-                        'name': 'Homepage'
-                    })
+                    # Use AI agent to discover pages (same as "Discover Pages" feature)
+                    from agent import AlphaTestAgent
 
-                    # Wait for any dynamic content to load
-                    await page.wait_for_timeout(2000)
+                    print(f"[SCREENSHOT] Using AI agent to discover pages")
 
-                    # Find all navigation elements - links, buttons, and clickable elements
-                    seen_urls = {page.url}
+                    # Initialize AI agent
+                    agent = AlphaTestAgent(
+                        api_key=api_key,
+                        status_callback=lambda msg: print(f"[SCREENSHOT-AI] {msg}"),
+                        browser_type=project.get('browser_type', 'chromium')
+                    )
 
-                    # 1. Find all anchor links
-                    links = await page.query_selector_all('a[href]')
-                    print(f"[SCREENSHOT] Found {len(links)} anchor links")
+                    try:
+                        await agent.initialize()
 
-                    for link in links[:30]:  # Increased limit to 30 links
-                        try:
-                            href = await link.get_attribute('href')
-                            if not href:
-                                continue
+                        # Login if needed
+                        if project.get('email') and project.get('password'):
+                            print(f"[SCREENSHOT] AI agent logging in...")
+                            await agent.login(
+                                login_url=project.get('login_url') or project['url'],
+                                email=project['email'],
+                                password=project['password']
+                            )
+                        else:
+                            await agent.page.goto(project['url'], wait_until='networkidle', timeout=30000)
 
-                            # Handle relative and absolute URLs
-                            if href.startswith('http'):
-                                full_url = href
-                            elif href.startswith('/'):
-                                full_url = project['url'].rstrip('/') + href
-                            elif href.startswith('#'):
-                                continue  # Skip anchor links
-                            else:
-                                full_url = project['url'].rstrip('/') + '/' + href
+                        # AI explores app to discover all pages
+                        print(f"[SCREENSHOT] AI agent exploring app...")
+                        socketio.emit('screenshot_progress', {
+                            'progress': 35,
+                            'status': 'AI exploring your app to find all pages...'
+                        }, room=job_id)
 
-                            # Filter out unwanted URLs
-                            if any(x in full_url.lower() for x in ['logout', 'signout', 'signin', 'login', 'signup']):
-                                continue
+                        await agent.run_command(
+                            """Thoroughly explore this web application. Navigate through ALL navigation menus,
+                            sidebar items, and main features. Click through every section to discover all pages.
+                            Visit dashboard, projects, reports, settings, and any other pages you find.
+                            Do NOT logout or modify data.""",
+                            max_steps=20
+                        )
 
-                            # Only include URLs from the same domain
-                            base_domain = project['url'].split('/')[2] if '/' in project['url'] else project['url']
-                            if base_domain not in full_url:
-                                continue
+                        # Extract discovered URLs
+                        visited_urls = list(set(agent.nav_tracker.get_current_path()))
+                        print(f"[SCREENSHOT] AI discovered {len(visited_urls)} unique pages")
 
-                            if full_url not in seen_urls:
-                                text = await link.inner_text()
-                                text = text.strip() if text else ''
-                                page_name = text[:50] if text else full_url.split('/')[-1] or 'Page'
-
-                                pages_to_capture.append({
-                                    'url': full_url,
-                                    'name': page_name
-                                })
-                                seen_urls.add(full_url)
-                                print(f"[SCREENSHOT] Added page: {page_name} - {full_url}")
-                        except Exception as e:
-                            print(f"[SCREENSHOT] Error processing link: {e}")
-                            continue
-
-                    # 2. Look for clickable navigation items (buttons, divs with onclick, etc.)
-                    nav_elements = await page.query_selector_all('nav a, [role="navigation"] a, .nav a, .navigation a, .menu a, .sidebar a')
-                    print(f"[SCREENSHOT] Found {len(nav_elements)} navigation elements")
-
-                    for nav_elem in nav_elements[:20]:
-                        try:
-                            href = await nav_elem.get_attribute('href')
-                            if not href or href.startswith('#'):
-                                continue
-
-                            if href.startswith('http'):
-                                full_url = href
-                            elif href.startswith('/'):
-                                full_url = project['url'].rstrip('/') + href
-                            else:
-                                full_url = project['url'].rstrip('/') + '/' + href
-
-                            if full_url not in seen_urls and 'logout' not in full_url.lower():
-                                text = await nav_elem.inner_text()
-                                page_name = text.strip()[:50] if text else full_url.split('/')[-1]
+                        # Get titles for each page
+                        for url in visited_urls:
+                            try:
+                                await agent.page.goto(url, wait_until='networkidle', timeout=10000)
+                                title = await agent.page.title()
+                                path = url.replace(project['url'].rstrip('/'), '') or '/'
 
                                 pages_to_capture.append({
-                                    'url': full_url,
-                                    'name': page_name or 'Nav Page'
+                                    'url': url,
+                                    'name': title or path.split('/')[-1] or 'Page'
                                 })
-                                seen_urls.add(full_url)
-                                print(f"[SCREENSHOT] Added nav page: {page_name} - {full_url}")
-                        except Exception as e:
-                            print(f"[SCREENSHOT] Error processing nav element: {e}")
-                            continue
+                                print(f"[SCREENSHOT] Added: {title or path}")
+                            except Exception as e:
+                                print(f"[SCREENSHOT] Error getting title for {url}: {e}")
+                                pages_to_capture.append({
+                                    'url': url,
+                                    'name': url.split('/')[-1] or 'Page'
+                                })
 
-                    print(f"[SCREENSHOT] Total pages to capture: {len(pages_to_capture)}")
+                        print(f"[SCREENSHOT] Total pages to capture: {len(pages_to_capture)}")
+
+                    finally:
+                        await agent.close()
+
+                    # Close AI agent's browser, continue with regular Playwright for screenshots
+                    await browser.close()
+                    browser = await p.chromium.launch(headless=True)
+                    context = await browser.new_context(viewport={'width': 1920, 'height': 1080})
+                    page = await context.new_page()
+
+                    # Re-login for screenshot browser
+                    if project.get('email') and project.get('password'):
+                        login_url = project.get('login_url') or project['url']
+                        await page.goto(login_url, wait_until='networkidle')
+
+                        try:
+                            email_input = await page.query_selector('input[type="email"], input[name*="email" i], input[id*="email" i]')
+                            if email_input:
+                                await email_input.fill(project['email'])
+
+                            password_input = await page.query_selector('input[type="password"]')
+                            if password_input:
+                                await password_input.fill(project['password'])
+
+                            submit_button = await page.query_selector('button[type="submit"], button:has-text("Log in"), button:has-text("Sign in")')
+                            if submit_button:
+                                await submit_button.click()
+                                await page.wait_for_load_state('networkidle')
+                        except:
+                            pass
 
                 else:  # Manual mode
                     # Parse instructions
@@ -1848,10 +1855,12 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
 
                 # Capture screenshots
                 total_captures = len(pages_to_capture) * len(devices)
+                total_pages = len(pages_to_capture)
                 current_capture = 0
+                current_page_num = 0
                 all_screenshots = []
 
-                print(f"[SCREENSHOT] Found {len(pages_to_capture)} pages to capture")
+                print(f"[SCREENSHOT] Found {total_pages} pages to capture")
                 print(f"[SCREENSHOT] Total captures: {total_captures}")
 
                 # Device viewport configurations
@@ -1863,17 +1872,20 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                     'desktop': {'width': 1920, 'height': 1080}
                 }
 
-                for page_info in pages_to_capture:
+                for page_idx, page_info in enumerate(pages_to_capture):
+                    current_page_num = page_idx + 1
                     try:
                         # Capture for each device type with proper viewport
                         for device_type in devices:
                             current_capture += 1
                             progress = 40 + int((current_capture / total_captures) * 50)
 
-                            print(f"[SCREENSHOT] Capturing {page_info['name']} on {device_type}")
+                            print(f"[SCREENSHOT] Capturing {page_info['name']} on {device_type} ({current_page_num}/{total_pages})")
                             socketio.emit('screenshot_progress', {
                                 'progress': progress,
-                                'status': f'Capturing {page_info["name"]} on {device_type}...'
+                                'status': f'Capturing {page_info["name"]} on {device_type}...',
+                                'totalPages': total_pages,
+                                'currentPage': current_page_num
                             }, room=job_id)
 
                             try:

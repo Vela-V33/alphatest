@@ -2088,7 +2088,7 @@
 
             socket.on('screenshot_progress', (data) => {
                 console.log('[Screenshot] Progress update:', data);
-                updateProgress(data.progress, data.status);
+                updateProgress(data.progress, data.status, data.totalPages, data.currentPage);
             });
 
             socket.on('screenshot_complete', (data) => {
