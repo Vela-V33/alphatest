@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Project - AlphaTest</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
 </head>
 <body>
@@ -39,51 +40,93 @@
                     </div>
 
                     <!-- Form -->
-                    <form id="projectForm" class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-300 mb-2">Project Name</label>
-                            <input type="text" id="name" placeholder="My Web App" required
-                                class="input-glass">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-slate-300 mb-2">App URL</label>
-                            <input type="url" id="url" placeholder="https://app.example.com" required
-                                class="input-glass">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-slate-300 mb-2">
-                                Login URL <span class="text-slate-500">(optional)</span>
-                            </label>
-                            <input type="url" id="login_url" placeholder="https://app.example.com/login"
-                                class="input-glass">
-                            <p class="text-xs text-slate-500 mt-2">Leave blank if same as app URL</p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-300 mb-2">Test Email</label>
-                                <input type="email" id="email" placeholder="tester@example.com"
-                                    class="input-glass">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-300 mb-2">Test Password</label>
-                                <input type="password" id="password" placeholder="••••••••"
-                                    class="input-glass">
+                    <form id="projectForm" class="space-y-6">
+                        <!-- Project Details Section -->
+                        <div class="glass-card p-5" style="background: var(--surface-variant); border: 2px solid var(--border-color);">
+                            <h3 class="text-sm font-semibold mb-4 flex items-center" style="color: var(--text-primary);">
+                                <svg class="w-5 h-5 mr-2" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                Project Information
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Project Name</label>
+                                    <input type="text" id="name" placeholder="My Web App" required
+                                        class="w-full px-4 py-3 rounded-lg"
+                                        style="background: var(--surface); border: 1px solid var(--border-subtle); color: var(--text-primary);">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Info Box -->
-                        <div class="glass-subtle p-4 flex items-start space-x-3">
-                            <span class="text-blue-400 text-lg">💡</span>
-                            <p class="text-sm text-slate-300">
-                                Use a dedicated test account, not your admin credentials. This keeps your main account safe.
-                            </p>
+                        <!-- App URLs Section -->
+                        <div class="glass-card p-5" style="background: var(--surface-variant); border: 2px solid var(--border-color);">
+                            <h3 class="text-sm font-semibold mb-4 flex items-center" style="color: var(--text-primary);">
+                                <svg class="w-5 h-5 mr-2" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                </svg>
+                                Application URLs
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">App URL</label>
+                                    <input type="url" id="url" placeholder="https://app.example.com" required
+                                        class="w-full px-4 py-3 rounded-lg"
+                                        style="background: var(--surface); border: 1px solid var(--border-subtle); color: var(--text-primary);">
+                                    <p class="text-xs mt-2" style="color: var(--text-secondary);">The main URL of your application</p>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">
+                                        Login URL <span style="color: var(--text-secondary);">(optional)</span>
+                                    </label>
+                                    <input type="url" id="login_url" placeholder="https://app.example.com/login"
+                                        class="w-full px-4 py-3 rounded-lg"
+                                        style="background: var(--surface); border: 1px solid var(--border-subtle); color: var(--text-primary);">
+                                    <p class="text-xs mt-2" style="color: var(--text-secondary);">Leave blank if same as app URL</p>
+                                </div>
+                            </div>
                         </div>
 
-                        <button type="submit" id="submitBtn" class="btn-primary w-full py-4">
-                            Create Project
+                        <!-- Test Credentials Section -->
+                        <div class="glass-card p-5" style="background: var(--surface-variant); border: 2px solid var(--border-color);">
+                            <h3 class="text-sm font-semibold mb-4 flex items-center" style="color: var(--text-primary);">
+                                <svg class="w-5 h-5 mr-2" style="color: var(--alphatest-sky);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                </svg>
+                                Test Account Credentials
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Test Email</label>
+                                        <input type="email" id="email" placeholder="tester@example.com"
+                                            class="w-full px-4 py-3 rounded-lg"
+                                            style="background: var(--surface); border: 1px solid var(--border-subtle); color: var(--text-primary);">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Test Password</label>
+                                        <input type="password" id="password" placeholder="••••••••"
+                                            class="w-full px-4 py-3 rounded-lg"
+                                            style="background: var(--surface); border: 1px solid var(--border-subtle); color: var(--text-primary);">
+                                    </div>
+                                </div>
+
+                                <!-- Info Box -->
+                                <div class="glass-card p-4 flex items-start space-x-3" style="background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3);">
+                                    <span class="text-xl">💡</span>
+                                    <p class="text-sm" style="color: var(--text-primary);">
+                                        Use a dedicated test account, not your admin credentials. This keeps your main account safe.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-600 hover:to-sky-600 transition transform hover:scale-105 shadow-lg shadow-cyan-500/30 text-white font-bold rounded-xl flex items-center justify-center space-x-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>Create Project</span>
                         </button>
                     </form>
                 </div>

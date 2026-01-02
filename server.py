@@ -1689,6 +1689,11 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                         if submit_button:
                             await submit_button.click()
                             await page.wait_for_load_state('networkidle')
+
+                            # After login, navigate to homepage to ensure we start discovery from authenticated state
+                            await page.goto(project['url'], wait_until='networkidle')
+                            await page.wait_for_timeout(2000)  # Let the app settle after login
+                            print(f"[SCREENSHOT] Navigated to homepage after login: {page.url}")
                     except:
                         pass
 

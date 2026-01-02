@@ -214,7 +214,7 @@
                 if (result.success) {
                     btn.textContent = '✓ Success!';
                     setTimeout(() => {
-                        window.location.href = '/';
+                        window.location.href = '/dashboard';
                     }, 500);
                 } else {
                     errorMsg.textContent = result.error || 'Failed to save API key';
