@@ -43,7 +43,7 @@ class AlphaTestAgent:
         browser_type: str = 'chromium'
     ):
         self.client = anthropic.Anthropic(api_key=api_key)
-        self.model = "claude-sonnet-4-20250514"
+        self.model = "claude-3-5-sonnet-20241022"  # Correct Claude 3.5 Sonnet model
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
         self.status = status_callback or print

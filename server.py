@@ -417,8 +417,9 @@ def discover_pages(project_id):
         try:
             await agent.initialize()
 
-            # Navigate to URL using agent's method (adds to breadcrumbs)
-            await agent.navigate(project['url'])
+            # Navigate to URL using agent's smart_navigate (adds to breadcrumbs)
+            print(f"[DISCOVERY] Navigating to {project['url']}")
+            await agent.smart_navigate(project['url'])
 
             # Login
             if project.get('email') and project.get('password'):
