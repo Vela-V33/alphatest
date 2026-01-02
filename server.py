@@ -416,7 +416,9 @@ def discover_pages(project_id):
 
         try:
             await agent.initialize()
-            await agent.page.goto(project['url'], wait_until='networkidle', timeout=30000)
+
+            # Navigate to URL using agent's method (adds to breadcrumbs)
+            await agent.navigate(project['url'])
 
             # Login
             if project.get('email') and project.get('password'):
@@ -437,9 +439,14 @@ def discover_pages(project_id):
                 max_steps=30
             )
 
-            # Extract discovered URLs
+            # Extract discovered URLs from navigation tracker
             visited_urls = list(set(agent.nav_tracker.get_current_path()))
             print(f"\n[DISCOVERY] Found {len(visited_urls)} unique pages")
+
+            # If no pages discovered, at least return the homepage
+            if len(visited_urls) == 0:
+                print(f"[DISCOVERY] WARNING: No pages discovered via navigation, adding homepage")
+                visited_urls = [project['url']]
 
             # Get titles for each page
             for url in visited_urls:
