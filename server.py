@@ -1719,29 +1719,94 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                         'status': 'Discovering pages...'
                     }, room=job_id)
 
-                    # Auto-discover pages (simple crawler)
+                    # Auto-discover pages (enhanced crawler)
                     pages_to_capture.append({
                         'url': page.url,
                         'name': 'Homepage'
                     })
 
-                    # Find links and add a few pages
-                    links = await page.query_selector_all('a[href]')
+                    # Wait for any dynamic content to load
+                    await page.wait_for_timeout(2000)
+
+                    # Find all navigation elements - links, buttons, and clickable elements
                     seen_urls = {page.url}
-                    for link in links[:10]:  # Limit to 10 pages
+
+                    # 1. Find all anchor links
+                    links = await page.query_selector_all('a[href]')
+                    print(f"[SCREENSHOT] Found {len(links)} anchor links")
+
+                    for link in links[:30]:  # Increased limit to 30 links
                         try:
                             href = await link.get_attribute('href')
-                            if href and href.startswith(('/','http')):
-                                full_url = href if href.startswith('http') else project['url'].rstrip('/') + href
-                                if full_url not in seen_urls:
-                                    text = await link.inner_text()
-                                    pages_to_capture.append({
-                                        'url': full_url,
-                                        'name': text[:50] if text else full_url.split('/')[-1]
-                                    })
-                                    seen_urls.add(full_url)
-                        except:
+                            if not href:
+                                continue
+
+                            # Handle relative and absolute URLs
+                            if href.startswith('http'):
+                                full_url = href
+                            elif href.startswith('/'):
+                                full_url = project['url'].rstrip('/') + href
+                            elif href.startswith('#'):
+                                continue  # Skip anchor links
+                            else:
+                                full_url = project['url'].rstrip('/') + '/' + href
+
+                            # Filter out unwanted URLs
+                            if any(x in full_url.lower() for x in ['logout', 'signout', 'signin', 'login', 'signup']):
+                                continue
+
+                            # Only include URLs from the same domain
+                            base_domain = project['url'].split('/')[2] if '/' in project['url'] else project['url']
+                            if base_domain not in full_url:
+                                continue
+
+                            if full_url not in seen_urls:
+                                text = await link.inner_text()
+                                text = text.strip() if text else ''
+                                page_name = text[:50] if text else full_url.split('/')[-1] or 'Page'
+
+                                pages_to_capture.append({
+                                    'url': full_url,
+                                    'name': page_name
+                                })
+                                seen_urls.add(full_url)
+                                print(f"[SCREENSHOT] Added page: {page_name} - {full_url}")
+                        except Exception as e:
+                            print(f"[SCREENSHOT] Error processing link: {e}")
                             continue
+
+                    # 2. Look for clickable navigation items (buttons, divs with onclick, etc.)
+                    nav_elements = await page.query_selector_all('nav a, [role="navigation"] a, .nav a, .navigation a, .menu a, .sidebar a')
+                    print(f"[SCREENSHOT] Found {len(nav_elements)} navigation elements")
+
+                    for nav_elem in nav_elements[:20]:
+                        try:
+                            href = await nav_elem.get_attribute('href')
+                            if not href or href.startswith('#'):
+                                continue
+
+                            if href.startswith('http'):
+                                full_url = href
+                            elif href.startswith('/'):
+                                full_url = project['url'].rstrip('/') + href
+                            else:
+                                full_url = project['url'].rstrip('/') + '/' + href
+
+                            if full_url not in seen_urls and 'logout' not in full_url.lower():
+                                text = await nav_elem.inner_text()
+                                page_name = text.strip()[:50] if text else full_url.split('/')[-1]
+
+                                pages_to_capture.append({
+                                    'url': full_url,
+                                    'name': page_name or 'Nav Page'
+                                })
+                                seen_urls.add(full_url)
+                                print(f"[SCREENSHOT] Added nav page: {page_name} - {full_url}")
+                        except Exception as e:
+                            print(f"[SCREENSHOT] Error processing nav element: {e}")
+                            continue
+
+                    print(f"[SCREENSHOT] Total pages to capture: {len(pages_to_capture)}")
 
                 else:  # Manual mode
                     # Parse instructions
