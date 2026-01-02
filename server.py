@@ -407,38 +407,109 @@ def discover_pages(project_id):
             page = await context.new_page()
 
             try:
-                # Login if credentials provided
+                # Login if credentials provided - USE ROBUST METHOD FROM AGENT.PY
                 if project.get('email') and project.get('password'):
                     login_url = project.get('login_url') or project['url']
-                    print(f"[DISCOVERY] Logging in at {login_url}")
-                    await page.goto(login_url, wait_until='networkidle', timeout=15000)
+                    print(f"[DISCOVERY] 🔐 Logging in at {login_url}")
+                    await page.goto(login_url, wait_until='networkidle', timeout=30000)
+                    await page.wait_for_timeout(2000)  # Wait for page to stabilize
 
-                    # Try to find and fill email/password fields
-                    try:
-                        email_input = await page.query_selector('input[type="email"], input[name*="email" i], input[id*="email" i]')
-                        if email_input:
-                            await email_input.fill(project['email'])
-                            print("[DISCOVERY] Filled email")
+                    # Try multiple email selectors (from agent.py)
+                    email_filled = False
+                    email_selectors = [
+                        "input[type='email']",
+                        "input[name='email']",
+                        "input[name='username']",
+                        "input[id='email']",
+                        "input[id='username']",
+                        "input[placeholder*='email' i]",
+                        "input[placeholder*='user' i]",
+                        "input[autocomplete='email']",
+                        "input[autocomplete='username']"
+                    ]
 
-                        password_input = await page.query_selector('input[type="password"]')
-                        if password_input:
-                            await password_input.fill(project['password'])
-                            print("[DISCOVERY] Filled password")
+                    for sel in email_selectors:
+                        try:
+                            elem = await page.wait_for_selector(sel, timeout=3000, state='visible')
+                            if elem:
+                                await elem.fill(project['email'])
+                                email_filled = True
+                                print(f"[DISCOVERY]    ✓ Email entered using: {sel}")
+                                break
+                        except:
+                            continue
 
-                        # Find and click submit button
-                        submit_button = await page.query_selector('button[type="submit"], button:has-text("Log in"), button:has-text("Sign in")')
-                        if submit_button:
-                            await submit_button.click()
-                            print("[DISCOVERY] Clicked login button")
-                            await page.wait_for_load_state('networkidle')
+                    if not email_filled:
+                        print("[DISCOVERY]    ✗ Could not find email field")
+                        # Continue anyway to homepage
+                        await page.goto(project['url'], wait_until='networkidle', timeout=15000)
+                        await page.wait_for_timeout(2000)
+                    else:
+                        # Try multiple password selectors
+                        password_filled = False
+                        password_selectors = [
+                            "input[type='password']",
+                            "input[name='password']",
+                            "input[id='password']",
+                            "input[placeholder*='password' i]",
+                            "input[autocomplete='current-password']"
+                        ]
 
-                            # After login, navigate to homepage
-                            await page.goto(project['url'], wait_until='networkidle', timeout=15000)
-                            await page.wait_for_timeout(3000)  # Let the app settle and load dynamic content
-                            print(f"[DISCOVERY] Logged in successfully, at: {page.url}")
-                    except Exception as login_error:
-                        print(f"[DISCOVERY] Login error: {login_error}")
-                        pass
+                        for sel in password_selectors:
+                            try:
+                                elem = await page.wait_for_selector(sel, timeout=3000, state='visible')
+                                if elem:
+                                    await elem.fill(project['password'])
+                                    password_filled = True
+                                    print(f"[DISCOVERY]    ✓ Password entered using: {sel}")
+                                    break
+                            except:
+                                continue
+
+                        if not password_filled:
+                            print("[DISCOVERY]    ✗ Could not find password field")
+                        else:
+                            # Find and click submit button
+                            submit_clicked = False
+                            submit_selectors = [
+                                "button[type='submit']",
+                                "input[type='submit']",
+                                "button:has-text('Log in')",
+                                "button:has-text('Login')",
+                                "button:has-text('Sign in')",
+                                "button:has-text('Submit')",
+                                "form button",
+                                ".login-button",
+                                "#login-button"
+                            ]
+
+                            for sel in submit_selectors:
+                                try:
+                                    elem = await page.wait_for_selector(sel, timeout=3000, state='visible')
+                                    if elem:
+                                        await elem.click()
+                                        submit_clicked = True
+                                        print(f"[DISCOVERY]    ✓ Clicked submit using: {sel}")
+                                        break
+                                except:
+                                    continue
+
+                            if submit_clicked:
+                                # Wait for navigation after login
+                                await page.wait_for_load_state('networkidle', timeout=30000)
+                                await page.wait_for_timeout(3000)  # Let app stabilize
+
+                                # Check if login succeeded
+                                current_url = page.url.lower()
+                                if 'login' not in current_url and 'signin' not in current_url and 'sign-in' not in current_url:
+                                    print(f"[DISCOVERY]    ✓ Login successful! Now at: {page.url}")
+                                else:
+                                    print(f"[DISCOVERY]    ⚠ Still on login page: {page.url}")
+                                    # Try navigating to homepage anyway
+                                    await page.goto(project['url'], wait_until='networkidle', timeout=15000)
+                                    await page.wait_for_timeout(2000)
+                            else:
+                                print("[DISCOVERY]    ✗ Could not find submit button")
                 else:
                     # No login, just navigate to homepage
                     await page.goto(project['url'], wait_until='networkidle', timeout=15000)
