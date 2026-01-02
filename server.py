@@ -398,8 +398,15 @@ def discover_pages(project_id):
         to_visit = []  # Will be set after login
         base_domain = urlparse(project['url']).netloc
 
-        print(f"[DISCOVERY] Starting crawl from {project['url']}")
+        print(f"\n" + "="*80)
+        print(f"[DISCOVERY] STARTING PAGE DISCOVERY")
+        print(f"[DISCOVERY] Project: {project.get('name', 'Unknown')}")
+        print(f"[DISCOVERY] Main URL: {project['url']}")
         print(f"[DISCOVERY] Base domain: {base_domain}")
+        print(f"[DISCOVERY] Has email: {'Yes' if project.get('email') else 'No'}")
+        print(f"[DISCOVERY] Has password: {'Yes' if project.get('password') else 'No'}")
+        print(f"[DISCOVERY] Login URL: {project.get('login_url') or project['url']}")
+        print(f"="*80 + "\n")
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -525,7 +532,8 @@ def discover_pages(project_id):
                     """Remove trailing slashes and fragments for comparison."""
                     parsed = urlparse(url)
                     # Remove fragment
-                    normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}{parsed.query}"
+                    query_part = f"?{parsed.query}" if parsed.query else ""
+                    normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}{query_part}"
                     # Remove trailing slash unless it's the root
                     if normalized.endswith('/') and len(parsed.path) > 1:
                         normalized = normalized.rstrip('/')
@@ -534,10 +542,14 @@ def discover_pages(project_id):
                 # Crawl up to 100 pages max
                 max_pages = 100
                 link_count = 0
+                to_visit_normalized = set()  # Track normalized URLs in queue for faster lookup
 
                 while to_visit and len(discovered_pages) < max_pages:
                     current_url = to_visit.pop(0)
                     normalized_current = normalize_url(current_url)
+
+                    # Remove from queue tracking
+                    to_visit_normalized.discard(normalized_current)
 
                     # Skip if already visited
                     if normalized_current in visited_urls:
@@ -626,7 +638,7 @@ def discover_pages(project_id):
                                         print(f"[DISCOVERY]   ✗ Already visited")
                                     continue
 
-                                if normalized_absolute in [normalize_url(u) for u in to_visit]:
+                                if normalized_absolute in to_visit_normalized:
                                     if link_count <= 10:
                                         print(f"[DISCOVERY]   ✗ Already in queue")
                                     continue
@@ -663,6 +675,7 @@ def discover_pages(project_id):
 
                                 # Add to queue!
                                 to_visit.append(absolute_url)
+                                to_visit_normalized.add(normalized_absolute)
                                 if link_count <= 10:
                                     print(f"[DISCOVERY]   ✓ Added to queue!")
 
