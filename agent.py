@@ -2495,7 +2495,7 @@ As a human QA tester, analyze the screenshot and decide the next action. Be thor
 
             # Also check if on same URL for too long
             current_url = self.page.url if self.page else ""
-            same_url_count = sum(1 for s in self.steps[-5:] if current_url and current_url in str(s.get('action', {}).get('selector', '')))
+            same_url_count = sum(1 for s in self.steps[-5:] if current_url and isinstance(s.get('action'), dict) and current_url in str(s.get('action').get('selector', '')))
 
             if similar_thinking_count >= 2:
                 self.status(f"   🚨 SEMANTIC STUCK DETECTED: Similar thinking {similar_thinking_count} times")
