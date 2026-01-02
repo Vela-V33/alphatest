@@ -617,6 +617,70 @@ def discover_pages(project_id):
                                 except:
                                     continue
 
+                        # Strategy 3: DETECT SPA - Check for buttons/cards with data attributes or click handlers
+                        # This handles apps that use JavaScript navigation instead of links
+                        spa_elements = await page.query_selector_all('button[data-url], [data-href], [data-link], .card[onclick], .tile[onclick], .item[onclick]')
+                        print(f"[DISCOVERY] Found {len(spa_elements)} SPA navigation elements")
+
+                        for elem in spa_elements:
+                            try:
+                                # Try to get URL from data attributes
+                                for attr in ['data-url', 'data-href', 'data-link', 'data-path']:
+                                    url = await elem.get_attribute(attr)
+                                    if url:
+                                        found_links.add(url)
+                                        break
+                            except:
+                                continue
+
+                        # Strategy 4: SPECIAL HANDLING for "select" or "choose" pages
+                        # If we're on a selection page with no links, try clicking the first clickable element
+                        if len(found_links) == 0 and ('select' in current_url.lower() or 'choose' in current_url.lower() or 'organization' in current_url.lower()):
+                            print(f"[DISCOVERY] ⚠️  On selection page with no links - attempting to interact")
+
+                            # Try to find and click organization cards, buttons, or tiles
+                            clickable_selectors = [
+                                'button:not([type="submit"]):not([disabled])',
+                                '.card:not(.disabled)',
+                                '.tile',
+                                '.organization',
+                                '[role="button"]',
+                                '.option',
+                                '.item',
+                                'div[onclick]'
+                            ]
+
+                            clicked = False
+                            for selector in clickable_selectors:
+                                if clicked:
+                                    break
+                                try:
+                                    elements = await page.query_selector_all(selector)
+                                    if len(elements) > 0:
+                                        print(f"[DISCOVERY] Found {len(elements)} '{selector}' elements - clicking first one")
+                                        # Click the first element
+                                        await elements[0].click()
+                                        await page.wait_for_load_state('networkidle', timeout=15000)
+                                        await page.wait_for_timeout(2000)
+
+                                        # Check if we navigated to a new page
+                                        new_url = page.url
+                                        if new_url != current_url:
+                                            print(f"[DISCOVERY] ✓ Navigated to: {new_url}")
+                                            # Add this new page to the queue
+                                            normalized_new = normalize_url(new_url)
+                                            if normalized_new not in visited_urls and normalized_new not in to_visit_normalized:
+                                                to_visit.append(new_url)
+                                                to_visit_normalized.add(normalized_new)
+                                                print(f"[DISCOVERY] ✓ Added new page to queue after click")
+                                            clicked = True
+                                            break
+                                        else:
+                                            print(f"[DISCOVERY] Still on same page after clicking '{selector}'")
+                                except Exception as click_error:
+                                    print(f"[DISCOVERY] Click attempt on '{selector}' failed: {click_error}")
+                                    continue
+
                         print(f"[DISCOVERY] Total unique hrefs found: {len(found_links)}")
 
                         # Process all found links
