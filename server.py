@@ -1735,104 +1735,17 @@ def run_screenshot_generation(project_id, job_id, project, devices, mode, instru
                 elif mode == 'auto':
                     socketio.emit('screenshot_progress', {
                         'progress': 30,
-                        'status': 'Using AI to discover all pages...'
+                        'status': 'Capturing current page...'
                     }, room=job_id)
 
-                    # Use AI agent to discover pages (same as "Discover Pages" feature)
-                    from agent import AlphaTestAgent
+                    # Simple auto mode - just capture the homepage/current page
+                    # Users should use "Discover Pages" first for multi-page screenshots
+                    pages_to_capture.append({
+                        'url': page.url,
+                        'name': await page.title() or 'Homepage'
+                    })
 
-                    print(f"[SCREENSHOT] Using AI agent to discover pages")
-
-                    # Initialize AI agent
-                    agent = AlphaTestAgent(
-                        api_key=api_key,
-                        status_callback=lambda msg: print(f"[SCREENSHOT-AI] {msg}"),
-                        browser_type=project.get('browser_type', 'chromium')
-                    )
-
-                    try:
-                        await agent.initialize()
-
-                        # Login if needed
-                        if project.get('email') and project.get('password'):
-                            print(f"[SCREENSHOT] AI agent logging in...")
-                            await agent.login(
-                                login_url=project.get('login_url') or project['url'],
-                                email=project['email'],
-                                password=project['password']
-                            )
-                        else:
-                            await agent.page.goto(project['url'], wait_until='networkidle', timeout=30000)
-
-                        # AI explores app to discover all pages
-                        print(f"[SCREENSHOT] AI agent exploring app...")
-                        socketio.emit('screenshot_progress', {
-                            'progress': 35,
-                            'status': 'AI exploring your app to find all pages...'
-                        }, room=job_id)
-
-                        await agent.run_command(
-                            """Thoroughly explore this web application. Navigate through ALL navigation menus,
-                            sidebar items, and main features. Click through every section to discover all pages.
-                            Visit dashboard, projects, reports, settings, and any other pages you find.
-                            Do NOT logout or modify data.""",
-                            max_steps=20
-                        )
-
-                        # Extract discovered URLs
-                        visited_urls = list(set(agent.nav_tracker.get_current_path()))
-                        print(f"[SCREENSHOT] AI discovered {len(visited_urls)} unique pages")
-
-                        # Get titles for each page
-                        for url in visited_urls:
-                            try:
-                                await agent.page.goto(url, wait_until='networkidle', timeout=10000)
-                                title = await agent.page.title()
-                                path = url.replace(project['url'].rstrip('/'), '') or '/'
-
-                                pages_to_capture.append({
-                                    'url': url,
-                                    'name': title or path.split('/')[-1] or 'Page'
-                                })
-                                print(f"[SCREENSHOT] Added: {title or path}")
-                            except Exception as e:
-                                print(f"[SCREENSHOT] Error getting title for {url}: {e}")
-                                pages_to_capture.append({
-                                    'url': url,
-                                    'name': url.split('/')[-1] or 'Page'
-                                })
-
-                        print(f"[SCREENSHOT] Total pages to capture: {len(pages_to_capture)}")
-
-                    finally:
-                        await agent.close()
-
-                    # Close AI agent's browser, continue with regular Playwright for screenshots
-                    await browser.close()
-                    browser = await p.chromium.launch(headless=True)
-                    context = await browser.new_context(viewport={'width': 1920, 'height': 1080})
-                    page = await context.new_page()
-
-                    # Re-login for screenshot browser
-                    if project.get('email') and project.get('password'):
-                        login_url = project.get('login_url') or project['url']
-                        await page.goto(login_url, wait_until='networkidle')
-
-                        try:
-                            email_input = await page.query_selector('input[type="email"], input[name*="email" i], input[id*="email" i]')
-                            if email_input:
-                                await email_input.fill(project['email'])
-
-                            password_input = await page.query_selector('input[type="password"]')
-                            if password_input:
-                                await password_input.fill(project['password'])
-
-                            submit_button = await page.query_selector('button[type="submit"], button:has-text("Log in"), button:has-text("Sign in")')
-                            if submit_button:
-                                await submit_button.click()
-                                await page.wait_for_load_state('networkidle')
-                        except:
-                            pass
+                    print(f"[SCREENSHOT] Auto mode - capturing current page: {page.url}")
 
                 else:  # Manual mode
                     # Parse instructions

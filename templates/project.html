@@ -456,17 +456,20 @@
                             </label>
                             <div class="grid grid-cols-3 gap-3">
                                 <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
-                                    <input type="radio" name="captureMode" value="auto" checked class="mr-3" onchange="toggleCaptureMode()">
+                                    <input type="radio" name="captureMode" value="auto" class="mr-3" onchange="toggleCaptureMode()">
                                     <div>
-                                        <p class="font-medium" style="color: var(--text-primary);">Automatic</p>
-                                        <p class="text-sm" style="color: var(--text-secondary);">Auto-discover all pages</p>
+                                        <p class="font-medium" style="color: var(--text-primary);">Quick</p>
+                                        <p class="text-sm" style="color: var(--text-secondary);">Homepage only</p>
                                     </div>
                                 </label>
-                                <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
-                                    <input type="radio" name="captureMode" value="select" class="mr-3" onchange="toggleCaptureMode()">
+                                <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-color);">
+                                    <input type="radio" name="captureMode" value="select" checked class="mr-3" onchange="toggleCaptureMode()">
                                     <div>
-                                        <p class="font-medium" style="color: var(--text-primary);">Select Pages</p>
-                                        <p class="text-sm" style="color: var(--text-secondary);">Choose from discovered pages</p>
+                                        <p class="font-medium flex items-center" style="color: var(--text-primary);">
+                                            Select Pages
+                                            <span class="ml-2 text-xs px-2 py-0.5 rounded" style="background: var(--alphatest-sky); color: white;">Recommended</span>
+                                        </p>
+                                        <p class="text-sm" style="color: var(--text-secondary);">AI discovers all pages</p>
                                     </div>
                                 </label>
                                 <label class="relative flex items-center p-4 glass-card cursor-pointer hover:border-cyan-500 transition" style="border: 2px solid var(--border-subtle);">
@@ -1913,6 +1916,9 @@
                 // Keep pageSelection visible if pages were already discovered
             }
         }
+
+        // Initialize capture mode on page load
+        setTimeout(() => toggleCaptureMode(), 100);
 
         let discoveredPages = [];
 
