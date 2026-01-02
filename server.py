@@ -633,73 +633,93 @@ def discover_pages(project_id):
                             except:
                                 continue
 
-                        # Strategy 4: AGGRESSIVE SPA HANDLING - Click through pages with no links
-                        # This is critical for SPAs that use JavaScript navigation everywhere
+                        # Strategy 4: ULTRA-AGGRESSIVE SPA HANDLING
+                        # For SPAs, click through MULTIPLE navigation elements per page
                         if len(found_links) == 0:
-                            print(f"[DISCOVERY] ⚠️  No links found on this page - attempting SPA navigation")
+                            print(f"[DISCOVERY] ⚠️  No links found - using ULTRA-AGGRESSIVE SPA mode")
 
-                            # Try to find and click interactive elements
-                            clickable_selectors = [
-                                'button:not([type="submit"]):not([disabled])',
-                                'a:not([href])',  # React Router Link components without href
-                                '.card:not(.disabled)',
-                                '.tile',
-                                '.menu-item',
-                                '.nav-item',
-                                '[role="button"]',
-                                '[role="tab"]',
-                                '.option',
-                                '.item',
-                                'div[onclick]',
-                                '[class*="button"]',
-                                '[class*="link"]'
+                            # Priority selectors for navigation (most likely to lead to new pages)
+                            nav_priority_selectors = [
+                                'nav a, nav button',  # Main navigation
+                                '[role="navigation"] a, [role="navigation"] button',
+                                '.sidebar a, .sidebar button, .sidebar [role="button"]',
+                                '.menu a, .menu button, .menu-item',
+                                '.nav-item, .nav-link',
+                                'header a:not([href*="logo"]), header button'
                             ]
 
-                            clicked = False
-                            for selector in clickable_selectors:
-                                if clicked:
-                                    break
+                            # Try clicking MULTIPLE elements on this page
+                            clicked_new_pages = 0
+                            max_clicks_per_page = 15  # Try up to 15 elements per page
+
+                            for selector in nav_priority_selectors:
                                 try:
                                     elements = await page.query_selector_all(selector)
-                                    if len(elements) > 0:
-                                        print(f"[DISCOVERY] Found {len(elements)} '{selector}' elements - clicking first one")
-                                        # Click the first element
-                                        await elements[0].click()
-                                        await page.wait_for_load_state('networkidle', timeout=15000)
-                                        await page.wait_for_timeout(2000)
+                                    print(f"[DISCOVERY] Found {len(elements)} elements matching '{selector}'")
 
-                                        # Check if we navigated to a new page
-                                        new_url = page.url
-                                        if new_url != current_url:
-                                            print(f"[DISCOVERY] ✓ Navigated to: {new_url}")
-                                            # Add this new page to the queue
-                                            normalized_new = normalize_url(new_url)
-                                            if normalized_new not in visited_urls and normalized_new not in to_visit_normalized:
-                                                to_visit.append(new_url)
-                                                to_visit_normalized.add(normalized_new)
-                                                print(f"[DISCOVERY] ✓ Added new page to queue after click")
-                                                clicked = True
+                                    for i, elem in enumerate(elements[:max_clicks_per_page]):
+                                        if clicked_new_pages >= max_clicks_per_page:
                                             break
-                                        else:
-                                            print(f"[DISCOVERY] Still on same page after clicking '{selector}'")
-                                except Exception as click_error:
-                                    print(f"[DISCOVERY] Click attempt on '{selector}' failed: {click_error}")
+
+                                        try:
+                                            # Get element text for logging
+                                            text = await elem.inner_text()
+                                            text = text.strip()[:30] if text else f"Element {i+1}"
+
+                                            print(f"[DISCOVERY] Clicking '{text}'...")
+
+                                            # Save current URL
+                                            before_url = page.url
+
+                                            # Click and wait
+                                            await elem.click()
+                                            await page.wait_for_load_state('networkidle', timeout=10000)
+                                            await page.wait_for_timeout(1000)
+
+                                            # Check if navigated
+                                            after_url = page.url
+                                            if after_url != before_url:
+                                                normalized_new = normalize_url(after_url)
+                                                if normalized_new not in visited_urls and normalized_new not in to_visit_normalized:
+                                                    to_visit.append(after_url)
+                                                    to_visit_normalized.add(normalized_new)
+                                                    clicked_new_pages += 1
+                                                    print(f"[DISCOVERY] ✓ NEW PAGE: {after_url}")
+
+                                                    # Navigate back to continue clicking other elements
+                                                    await page.goto(before_url, wait_until='networkidle', timeout=10000)
+                                                    await page.wait_for_timeout(1000)
+                                                else:
+                                                    print(f"[DISCOVERY] Already queued: {after_url}")
+                                                    # Go back anyway
+                                                    await page.goto(before_url, wait_until='networkidle', timeout=10000)
+                                                    await page.wait_for_timeout(500)
+                                            else:
+                                                print(f"[DISCOVERY] No navigation from '{text}'")
+
+                                        except Exception as elem_error:
+                                            print(f"[DISCOVERY] Error clicking element: {elem_error}")
+                                            # Try to recover by going back to the current page
+                                            try:
+                                                await page.goto(current_url, wait_until='networkidle', timeout=10000)
+                                                await page.wait_for_timeout(500)
+                                            except:
+                                                pass
+                                            continue
+
+                                except Exception as selector_error:
+                                    print(f"[DISCOVERY] Error with selector '{selector}': {selector_error}")
                                     continue
 
-                            # If still no links after clicking, try to extract React Router / Vue Router paths
-                            if not clicked:
-                                print(f"[DISCOVERY] Looking for SPA route data in page...")
-                                try:
-                                    # Try to find data-* attributes that might contain routes
-                                    route_elements = await page.query_selector_all('[data-route], [data-path], [data-to]')
-                                    for elem in route_elements[:10]:  # Limit to 10
-                                        for attr in ['data-route', 'data-path', 'data-to']:
-                                            route = await elem.get_attribute(attr)
-                                            if route:
-                                                found_links.add(route)
-                                                print(f"[DISCOVERY] Found route in {attr}: {route}")
-                                except:
-                                    pass
+                            print(f"[DISCOVERY] Discovered {clicked_new_pages} new pages from this page")
+
+                            # If we found pages via clicking, we're done with this page
+                            if clicked_new_pages > 0:
+                                print(f"[DISCOVERY] Total unique hrefs found: 0 (SPA mode found {clicked_new_pages} via clicking)")
+                                # Skip the href processing below since we found pages via clicking
+                                print(f"[DISCOVERY] Queue size: {len(to_visit)} pages remaining")
+                                print(f"[DISCOVERY] Discovered so far: {len(discovered_pages)} pages")
+                                continue  # Skip to next page in queue
 
                         print(f"[DISCOVERY] Total unique hrefs found: {len(found_links)}")
 
